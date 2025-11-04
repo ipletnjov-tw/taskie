@@ -3,7 +3,7 @@
 This is a simple framework of reusable prompts that makes it easy to use LLMs to implement features & projects of almost any level of complexity while maintaining a high level of code quality.
 
 Works well with **Anthropic Claude Sonnet** 3.7, 4.0 and 4.5. Tested using the Cursor IDE (VSCode), Cursor Background Agents, Claude Code CLI and Claude Code Web.
-
+ 
 ## Structure
 
 The frameworks consists of **[actions](./.llm/actions)** and **[personas](./.llm/personas)**. These two tools are used to design and execute **implementation plans**. Each plan consists of a number of **tasks**, and each task consists of a number of **subtasks**.
@@ -60,5 +60,34 @@ The LLM will very critically scrutinize its own implementation. You will then wa
 
 **Refine each task as much as possible using the review & post-review cycle until you achieve your desired level of completion and quality.** 🔁
 
+Note: This does **not** mean that you get to skip reviewing the code yourself. You need to review **everything**, every step of the way.
+
 Once the first task is done, move to the next one using `Perform the action described in .llm/actions/next-task.md.`. Repeat until every task is done! 🚀 
 
+## FAQ
+
+### What are personas used for?
+
+They're highly experimental at the moment. The idea is that we get to guide the LLM's behavior according to what we're trying to achieve in the current plan or task by prompting `Perform the action described in .llm/actions/action.md using .llm/personas/persona.md`.
+
+So far the only persona with a good track record is `writer.md`, the rest are still a work-in-progress.
+
+### Why do we need to generate so much Markdown?
+
+This solves two problems: **loss of context** and **context window size**.
+
+#### Loss of context
+
+The LLM can crash and lose context, the background agent could stop working and lose context, you may decide to switch tools at some point, etc.
+
+The big advantage is that **you will never lose context**, no matter what tool you're using and what happens to it. If something goes wrong, you can simply point the LLM at the branch you were working on and prompt:
+```
+Perform the action described in .llm/actions/continue-plan.md
+```
+And it will continue right where it left off, with all the context it needs to continue progressing at the same pace and same level of quality.
+
+#### Context window size
+
+The `tasks.md` file and individual task files are structured the way they are to ensure the LLM is able to accurately keep track of **its current task** and the **overall progression of the plan** without overloading its context window and leading to sudden amnesia.
+
+Trust me, all tasks in one file does not work well. All tasks in individual files without an overview / status tracker does not work well either. I've tried both.
