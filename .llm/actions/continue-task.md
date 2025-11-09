@@ -1,7 +1,5 @@
 # Continue Task Implementation
 
-Your persona for this action is defined in `.llm/personas/qa.md`. You MUST reflect the traits and characteristics established by `.llm/personas/qa.md`.
-
 You will need to continue working on a task in the implementation plan. 
 
 After you're done implementing it, document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{next-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`.
