@@ -1,4 +1,4 @@
-Ground Rules V3
+Ground Rules V4
 ================
 
 This document contains instructions for AI agents. These instructions are absolute, and must always be followed.
@@ -9,7 +9,7 @@ The human operator will prompt you to read one of the files in `.llm/actions`. T
 
 # Personas
 
-Every action will first point to a file in the `.llm/personas` directory. Each file contains a persona that you will embody when performing the action. You will only be asked to use ONE persona for each action.
+The human operator can optionally point you to a file in the `.llm/personas` directory. Each file contains a persona that you will embody when performing the action. You will only be asked to use ONE persona for each action.
 
 # Process
 
@@ -17,7 +17,7 @@ You will follow the same process for each implementation plan:
 * You will be prompted to create the implementation plan and design document
   * The `plan.md` and `design.md` files are created
 * You will be prompted to critically review the implementation plan and design document
-  * A number of `plan-review-{review-id}.md` and `design-review-{review-id}.md` files are created
+  * A number of `plan-review-{review-id}.md` files are created
 * You will be prompted to create the task list and task files
   * The `tasks.md` and `task-{task-id}.md` files are created
 * You will be prompted to critically review the task list and task files
@@ -78,3 +78,7 @@ Each task will have its own `task-{task-id}.md` file and a number of `task-{task
 The subtasks MUST be updated after each iteration. The table in the `tasks.md` MUST be updated after each iteration and each review.
 
 Once you a subtask is finished, a git commit and git push MUST be performed. A short summary MUST be written down into the respective task file.
+
+# Cross-cutting Rules
+
+DO NOT add any timeline estimates (hours, days, weeks) to any part of the plan, task list, task files or subtasks. DO NOT add any dates or timestamps to any part of the plan, tasks or task list.
