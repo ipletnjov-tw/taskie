@@ -1,0 +1,25 @@
+{
+  "name": "taskie",
+  "owner": {
+    "name": "ipletnjov-tw"
+  },
+  "metadata": {
+    "description": "Plugin marketplace for Taskie",
+    "version": "1.0.0",
+    "pluginRoot": "."
+  },
+  "plugins": [
+    {
+      "name": "taskie",
+      "source": "./taskie",
+      "description": "Task management and workflow commands for structured development planning and execution",
+      "author": {
+        "name": "Igor Pletnjov",
+        "url": "https://github.com/ipletnjov-tw"
+      },
+      "version": "1.0.0",
+      "keywords": ["task-management", "planning", "workflow", "engineering", "quality"],
+      "homepage": "https://github.com/ipletnjov-tw/prompts"
+    }
+  ]
+}
