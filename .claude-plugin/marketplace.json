@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Plugin marketplace for Taskie",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "pluginRoot": "."
   },
   "plugins": [
@@ -17,9 +17,10 @@
         "name": "Igor Pletnjov",
         "url": "https://github.com/ipletnjov-tw"
       },
-      "version": "1.0.0",
+      "version": "1.1.0",
       "keywords": ["task-management", "planning", "workflow", "engineering", "quality"],
-      "homepage": "https://github.com/ipletnjov-tw/prompts"
+      "homepage": "https://github.com/ipletnjov-tw/taskie",
+      "repository": "https://github.com/ipletnjov-tw/taskie.git"
     }
   ]
 }

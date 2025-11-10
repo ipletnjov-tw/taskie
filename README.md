@@ -11,7 +11,7 @@ Packaged and distributed as a Claude Code plugin. For usage outside of Claude Co
 ### Add the Taskie marketplace
 
 ```bash
-/plugin marketplace add github:ipletnjov-tw/prompts
+/plugin marketplace add github:ipletnjov-tw/taskie
 ```
 
 ### Install the plugin
