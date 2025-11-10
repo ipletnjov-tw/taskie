@@ -1,9 +1,5 @@
-# prompts
+# Manual Usage (Non-Claude Code)
 
-This is a simple framework of reusable prompts that makes it easy to use LLMs to implement features & projects of almost any level of complexity while maintaining a high level of code quality.
-
-Works well with **Anthropic Claude Sonnet** 3.7, 4.0 and 4.5. Tested using the Cursor IDE (VSCode), Cursor Background Agents, Claude Code CLI and Claude Code Web.
- 
 ## Structure
 
 The frameworks consists of **[actions](./.llm/actions)** and **[personas](./.llm/personas)**. These two tools are used to design and execute **implementation plans**. Each plan consists of a number of **tasks**, and each task consists of a number of **subtasks**.

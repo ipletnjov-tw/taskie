@@ -6,4 +6,4 @@ If you don't know what the `{current-plan-dir}` is, use git history to find out 
 
 Document the results of your review in `.llm/plans/{current-plan-dir}/tasks-{review-id}.md`.
 
-Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+Remember, you MUST follow the `ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.

@@ -6,4 +6,4 @@ After you're done implementing it, document your progress with a short summary i
 
 If you don't know what the `{current-plan-dir}` or `{current-task-id}` are, use git history to find out which plan and task was modified most recently.
 
-Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+Remember, you MUST follow the `ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.

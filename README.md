@@ -43,20 +43,86 @@ Once installed, you'll have access to these slash commands:
 
 ## Usage
 
-All commands support appending additional instructions:
+All commands support appending additional instructions. Most of the time, your prompts will look **exactly** like this:
 
 ```bash
-/taskie/new-plan I need to implement feature X with A, B, and C
-/taskie/code-review Focus on error handling
+/taskie/command-name
 ```
 
-## Workflow
+Or with additional context:
 
-1. **Plan** - Create and refine your implementation plan using `/taskie/new-plan` and review cycles
-2. **Task** - Break down the plan into tasks with `/taskie/create-tasks` and review them
-3. **Code** - Implement each task using `/taskie/next-task`, review with `/taskie/code-review`, and refine
-4. **Iterate** - Repeat review cycles until you achieve your desired quality level
+```bash
+/taskie/command-name Additional instructions here
+```
 
-## For Non-Claude Code Users
+### Kick off a new implementation plan
 
-If you're not using Claude Code, see [PROMPTS.md](./PROMPTS.md) for instructions on using the raw prompt files directly with any LLM tool.
+Your first prompt should look like this:
+
+```bash
+/taskie/new-plan I need to implement feature X, it needs to be A, B, and C. You will have to use Y and please make sure you don't forget X.
+```
+
+You will want to read the generated plan and refine the details with the LLM. In addition, you can prompt `/taskie/plan-review` to get the LLM to critically review and scrutinize the plan.
+
+After the review is written, use `/taskie/post-plan-review` for the LLM to address the review comments. You may want to add what review comments it should leave unaddressed, in case you disagree with any of them.
+
+Repeat the review & post-review cycle until the plan and design are in good shape. 🔁
+
+### Create the tasks for the plan
+
+```bash
+/taskie/create-tasks
+```
+
+This will create the `tasks.md` table along with a number of task files. You will then want to `/taskie/tasks-review` to ensure the tasks actually correspond to the plan.
+
+After the review is written, prompt `/taskie/post-tasks-review` for the LLM to address the review comments.
+
+Repeat the review & post-review cycle until the tasks are in good shape. 🔁
+
+### Let's write some code! ⌨️
+
+After you're done iterating on the plan, design and tasks, we can move on to the meat of the work:
+
+```bash
+/taskie/next-task
+```
+
+The LLM will start implementing the first task and all of its subtasks. It will then stop and wait for your review before proceeding to the next one. You will then want to prompt:
+
+```bash
+/taskie/code-review
+```
+
+The LLM will very critically scrutinize its own implementation. You will then want to `/taskie/post-code-review` to apply the review comments to the implementation.
+
+**Refine each task as much as possible using the review & post-review cycle until you achieve your desired level of completion and quality.** 🔁
+
+Note: This does **not** mean that you get to skip reviewing the code yourself. You need to review **everything**, every step of the way.
+
+Once the first task is done, move to the next one using `/taskie/next-task`. Repeat until every task is done! 🚀
+
+## FAQ
+
+### Why do we need to generate so much Markdown?
+
+This solves two problems: **loss of context** and **context window size**.
+
+#### Loss of context
+
+The LLM can crash and lose context, the background agent could stop working and lose context, you may decide to switch tools at some point, etc.
+
+The big advantage is that **you will never lose context**, no matter what tool you're using and what happens to it. If something goes wrong, you can simply point the LLM at the branch you were working on and prompt:
+
+```bash
+/taskie/continue-plan
+```
+
+And it will continue right where it left off, with all the context it needs to continue progressing at the same pace and same level of quality.
+
+#### Context window size
+
+The `tasks.md` file and individual task files are structured the way they are to ensure the LLM is able to accurately keep track of **its current task** and the **overall progression of the plan** without overloading its context window and leading to sudden amnesia.
+
+Trust me, all tasks in one file does not work well. All tasks in individual files without an overview / status tracker does not work well either. I've tried both.
