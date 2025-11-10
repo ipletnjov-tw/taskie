@@ -1,4 +1,5 @@
 ---
+description: Implement the next task in the plan
 disable-model-invocation: true
 ---
 

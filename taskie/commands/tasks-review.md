@@ -1,4 +1,5 @@
 ---
+description: Review the task list and task files for the implementation plan
 disable-model-invocation: true
 ---
 

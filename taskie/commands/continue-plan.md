@@ -1,4 +1,5 @@
 ---
+description: Continue the latest implementation plan
 disable-model-invocation: true
 ---
 

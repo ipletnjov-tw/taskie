@@ -5,11 +5,11 @@ This document contains instructions for AI agents. These instructions are absolu
 
 # Actions
 
-The human operator will prompt you to read one of the files in `.llm/actions`. These files contain descriptions of actions that the human operator will want you to perform. You will only be asked to read ONE file and perform ONE action for each prompt.
+The human operator will prompt you to read one of the files in `.taskie/actions`. These files contain descriptions of actions that the human operator will want you to perform. You will only be asked to read ONE file and perform ONE action for each prompt.
 
 # Personas
 
-The human operator can optionally point you to a file in the `.llm/personas` directory. Each file contains a persona that you will embody when performing the action. You will only be asked to use ONE persona for each action.
+The human operator can optionally point you to a file in the `.taskie/personas` directory. Each file contains a persona that you will embody when performing the action. You will only be asked to use ONE persona for each action.
 
 # Process
 
@@ -33,7 +33,7 @@ Each step of the plan will consist of multiple iterations, depending on the resu
 
 Each plan will have the same basic directory structure:
 ```
-.llm/
+.taskie/
 ├── plans/                          
 │   ├── {current-plan-id}/          
 │   │   ├── plan.md                 # Implementation Plan Document

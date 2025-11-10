@@ -1,4 +1,5 @@
 ---
+description: Review the implementation plan
 disable-model-invocation: true
 ---
 

@@ -1,4 +1,5 @@
 ---
+description: Perform a thorough & critical code review
 disable-model-invocation: true
 ---
 

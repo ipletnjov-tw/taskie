@@ -1,4 +1,5 @@
 ---
+description: Continue the latest task
 disable-model-invocation: true
 ---
 

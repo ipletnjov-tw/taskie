@@ -1,4 +1,5 @@
 ---
+description: Create a new implementation plan
 disable-model-invocation: true
 ---
 
