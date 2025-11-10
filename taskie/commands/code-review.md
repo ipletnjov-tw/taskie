@@ -2,6 +2,6 @@
 disable-model-invocation: true
 ---
 
-Perform the action described in actions/code-review.md
+Perform the action described in @${CLAUDE_PLUGIN_ROOT}/actions/code-review.md
 
 $ARGUMENTS
