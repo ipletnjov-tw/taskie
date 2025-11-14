@@ -111,7 +111,7 @@ This solves two problems: **loss of context** and **context window size**.
 
 #### Loss of context
 
-The LLM can crash and lose context, the background agent could stop working and lose context, you may decide to switch tools at some point, etc.
+The LLM can crash and lose context, the background agent could stop working and lose context, your agent will compact the converation and lose context, you may decide to switch tools at some point, etc.
 
 The big advantage is that **you will never lose context**, no matter what tool you're using and what happens to it. If something goes wrong, you can simply point the LLM at the branch you were working on and prompt:
 
