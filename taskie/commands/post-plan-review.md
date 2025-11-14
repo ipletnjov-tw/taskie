@@ -1,5 +1,5 @@
 ---
-description: Address the implementation plan review comments
+description: Address the implementation plan review comments. DO NOT use a subagent unless you are explicitly prompted to do so.
 disable-model-invocation: true
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Address the code review comments
+description: Address the code review comments. DO NOT use a subagent unless you are explicitly prompted to do so.
 disable-model-invocation: true
 ---
 
