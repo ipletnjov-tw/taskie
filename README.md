@@ -41,6 +41,14 @@ Once installed, you'll have access to these slash commands:
 - `/taskie:code-review` - Critically review implemented code
 - `/taskie:post-code-review` - Apply code review feedback
 
+### TDD Commands
+- `/taskie:next-task-tdd` - Implement next task using strict TDD (red-green-refactor)
+- `/taskie:complete-task-tdd` - TDD implementation with automatic review cycle
+
+### Unified Workflow Commands
+- `/taskie:complete-task` - Implement + review + fix in one command
+- `/taskie:complete-task-tdd` - TDD variant of complete-task
+
 ## Usage
 
 All commands support appending additional instructions. Most of the time, your prompts will look **exactly** like this:

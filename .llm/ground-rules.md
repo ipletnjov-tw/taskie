@@ -25,7 +25,7 @@ You will follow the same process for each implementation plan:
 * You will be prompted to implement the tasks
   * The `tasks.md` and `task-{task-id}.md` files are updated
 * You will be prompted to review the task implementation
-  * A number of `tasks-review-{review-id}.md` files are created
+  * A number of `task-{task-id}-review-{review-id}.md` files are created
 
 Each step of the plan will consist of multiple iterations, depending on the results of the critical reviews and the human operator's assessment.
 

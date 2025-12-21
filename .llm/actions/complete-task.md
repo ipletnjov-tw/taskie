@@ -20,7 +20,7 @@ Return to Phase 2. Maximum 3 review-fix cycles. If issues remain, pause and requ
 
 ## Phase 4: Verification
 
-Update task status to "awaiting-human-review" and push to remote.
+Update task status to "completed" and push to remote.
 
 If you don't know `{current-plan-dir}`, use git history to find the most recently modified plan.
 
