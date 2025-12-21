@@ -1,22 +1,22 @@
 # Complete Task with Review Cycle (TDD)
 
-Execute full task completion using TDD: Implement → Self-Review → Fix → Verify. You MUST complete ONLY ONE task.
+Execute full task completion using TDD: Implement → Review → Fix → Verify. You MUST complete ONLY ONE task.
 
 ## Phase 1: Implementation
 
 Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/next-task-tdd.md`.
 
-## Phase 2: Self-Review
+## Phase 2: Code Review
 
 Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`.
 
 If no issues are identified, skip to Phase 4.
 
-## Phase 3: Fix ALL Issues
+## Phase 3: Post-Review Fixes
 
 Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/post-code-review.md`.
 
-Return to Phase 2. Maximum 3 review-fix cycles. If issues remain, pause and request human input.
+You MUST address ALL issues. Return to Phase 2. Maximum 3 review-fix cycles. If issues remain, pause and request human input.
 
 ## Phase 4: Verification
 
