@@ -3,6 +3,6 @@ description: Implement next task using strict TDD (red-green-refactor). DO NOT u
 disable-model-invocation: true
 ---
 
-Perform the action described in @${CLAUDE_PLUGIN_ROOT}/actions/next-task-tdd.md using @${CLAUDE_PLUGIN_ROOT}/personas/tdd.md
+Perform the action described in @${CLAUDE_PLUGIN_ROOT}/actions/next-task-tdd.md
 
 $ARGUMENTS

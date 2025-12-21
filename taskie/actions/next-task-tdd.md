@@ -12,6 +12,8 @@ For EACH subtask, follow this cycle:
 
 4. **REPEAT** until subtask is complete, then run all must-run commands and commit.
 
+For untestable subtasks (docs, config), skip directly to implementation and note in commit why TDD was skipped.
+
 After you're done, document your progress with a short summary in `.taskie/plans/{current-plan-dir}/task-{current-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.taskie/plans/{current-plan-dir}/tasks.md`.
 
 If you don't know what the `{current-plan-dir}` or `{current-task-id}` are, use git history to find out which plan and task was modified most recently.

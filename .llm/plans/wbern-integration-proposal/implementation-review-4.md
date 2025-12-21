@@ -72,7 +72,7 @@ All new functionality is additive:
 
 ## Angle 6: Error Modes
 
-**Status**: ⚠️ ADVISORY
+**Status**: ✅ FIXED
 
 **Issue**: No guidance for when TDD is impossible
 
@@ -81,9 +81,7 @@ Some scenarios where TDD cannot be applied:
 - Configuration file changes
 - Third-party integration setup
 
-The `next-task-tdd.md` action doesn't provide escape hatch for untestable subtasks.
-
-**Recommendation**: Consider adding: "For subtasks that cannot be tested (config, docs), skip directly to implementation and note in commit why TDD was skipped."
+**Fix**: Added escape hatch to `next-task-tdd.md`: "For untestable subtasks (docs, config), skip directly to implementation and note in commit why TDD was skipped."
 
 ---
 
@@ -116,19 +114,13 @@ This is acceptable given the simplicity, but any future changes to the review cy
 
 ## Angle 9: Completeness of TDD Integration
 
-**Status**: 🚨 BLOCKING
+**Status**: ⏭️ SKIPPED (per user request)
 
 **Issue**: TDD persona not mentioned in TDD action files
 
 The `next-task-tdd.md` and `complete-task-tdd.md` actions don't reference the TDD persona at all. The persona exists (`taskie/personas/tdd.md`) but users won't know to use it.
 
-**Recommendation**: Add to TDD commands: "For best results, combine with the TDD persona."
-
-Or update action files to explicitly suggest persona usage.
-
-**Files**:
-- `taskie/actions/next-task-tdd.md`
-- `taskie/actions/complete-task-tdd.md`
+User decided not to add persona references to commands.
 
 ---
 
@@ -165,12 +157,12 @@ Phase 4 should update:
 | 3 | Edge case handling | ⚠️ | Advisory |
 | 4 | Command interaction | ✅ | Pass |
 | 5 | Backward compatibility | ✅ | Pass |
-| 6 | Error modes | ⚠️ | Advisory |
+| 6 | Error modes | ✅ | Fixed |
 | 7 | Cognitive load | ✅ | Pass |
 | 8 | DRY principle | ⚠️ | Advisory |
-| 9 | TDD integration completeness | 🚨 | Blocking |
-| 10 | Semantic correctness | 🚨 | Blocking |
+| 9 | TDD integration completeness | ⏭️ | Skipped |
+| 10 | Semantic correctness | ✅ | Fixed |
 
-**Blocking Issues**: 2
-**Advisory Issues**: 4
+**Blocking Issues**: 0 (1 fixed, 1 skipped per user request)
+**Advisory Issues**: 3 (1 fixed)
 **Passed**: 4
