@@ -63,13 +63,11 @@ This plan integrates wbern/claude-instructions TDD concepts into Taskie using th
 
 ### Rationale
 
-Instead of creating `/taskie:tdd-task` and `/taskie:cycle` commands:
-
 1. **TDD persona** provides behavior modification via existing persona system
-2. **Enhanced `next-task`** includes optional TDD guidance
-3. **Only `complete-task`** is truly new (combines 3 existing commands)
+2. **New `next-task-tdd` command** - dedicated TDD variant (leaves `next-task` unchanged)
+3. **New `complete-task` command** - combines 3 existing commands into one
 
-This reduces complexity from 9 new/modified files to 5.
+This keeps existing commands stable while adding new TDD capabilities.
 
 ---
 
@@ -84,12 +82,13 @@ This reduces complexity from 9 new/modified files to 5.
 | **CREATE** | `.llm/actions/complete-task.md` | Unified workflow (local) |
 | **CREATE** | `taskie/actions/complete-task.md` | Unified workflow (plugin) |
 | **CREATE** | `taskie/commands/complete-task.md` | Command wrapper |
-| **MODIFY** | `.llm/actions/next-task.md` | Add TDD guidance section |
-| **MODIFY** | `taskie/actions/next-task.md` | Add TDD guidance section (plugin paths) |
+| **CREATE** | `.llm/actions/next-task-tdd.md` | TDD-enforced task implementation (local) |
+| **CREATE** | `taskie/actions/next-task-tdd.md` | TDD-enforced task implementation (plugin) |
+| **CREATE** | `taskie/commands/next-task-tdd.md` | Command wrapper |
 | **MODIFY** | `.llm/actions/create-tasks.md` | Add acceptance criteria field |
 | **MODIFY** | `taskie/actions/create-tasks.md` | Add acceptance criteria field (plugin paths) |
 
-**Total: 5 new files, 4 modified files**
+**Total: 8 new files, 2 modified files**
 
 ---
 
@@ -128,7 +127,94 @@ Same content as above. This requires creating a new `taskie/personas/` directory
 
 ---
 
-### 3. CREATE: `.llm/actions/complete-task.md`
+### 3. CREATE: `.llm/actions/next-task-tdd.md`
+
+```markdown
+# Start Next Task Implementation (TDD)
+
+Proceed to the next task in the implementation plan using strict Test-Driven Development. You MUST implement ONLY ONE task, including ALL of its subtasks. You MUST NOT implement more than ONE task.
+
+## TDD Approach
+
+For EACH subtask, follow this cycle:
+
+### 1. RED: Write ONE Failing Test
+
+- Write exactly ONE test based on the subtask's acceptance criteria
+- Test must fail for the right reason (not syntax/import errors)
+- Run test suite to confirm failure
+- Do NOT write any implementation code yet
+- Do NOT write multiple tests at once
+
+### 2. GREEN: Write MINIMAL Passing Code
+
+- Write the MINIMUM code to make the failing test pass
+- Address only the specific failure message
+- Run test suite to confirm all tests pass
+- Do NOT add extra functionality beyond what the test requires
+- Do NOT refactor yet
+
+### 3. REFACTOR: Improve Structure
+
+- Only proceed when ALL tests are passing
+- Improve code structure (both implementation and test code)
+- Run tests after each change to ensure they stay green
+- Allowed: rename variables, extract methods, improve clarity
+- NOT allowed: add new functionality, change behavior
+
+### 4. REPEAT
+
+Continue the RED → GREEN → REFACTOR cycle until the subtask functionality is complete.
+
+## After Each Subtask
+
+- Run ALL must-run commands from the subtask definition
+- Create git commit with descriptive message
+- Update subtask status and git commit hash
+
+## After All Subtasks Complete
+
+Document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{next-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`.
+
+If you don't know what the `{current-plan-dir}` or `{next-task-id}` are, use git history to find out which plan and task was modified most recently.
+
+## Violations to Avoid
+
+- Writing implementation before a failing test exists
+- Adding multiple tests simultaneously
+- Implementing beyond what the current test requires
+- Refactoring while tests are failing
+- Mentioning TDD in code comments, commits, or documentation
+
+Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+```
+
+---
+
+### 4. CREATE: `taskie/actions/next-task-tdd.md`
+
+Same content as above, but with path changes:
+- `.llm/plans/` → `.taskie/plans/`
+- `.llm/ground-rules.md` → `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md`
+
+---
+
+### 5. CREATE: `taskie/commands/next-task-tdd.md`
+
+```markdown
+---
+description: Implement next task using strict TDD (red-green-refactor). DO NOT use a subagent unless you are explicitly prompted to do so.
+disable-model-invocation: true
+---
+
+Perform the action described in @${CLAUDE_PLUGIN_ROOT}/actions/next-task-tdd.md
+
+$ARGUMENTS
+```
+
+---
+
+### 6. CREATE: `.llm/actions/complete-task.md`
 
 ```markdown
 # Complete Task with Review Cycle
@@ -196,7 +282,7 @@ Remember, you MUST follow `.llm/ground-rules.md` at ALL times.
 
 ---
 
-### 4. CREATE: `taskie/actions/complete-task.md`
+### 7. CREATE: `taskie/actions/complete-task.md`
 
 Same content as above, but with path changes:
 - `.llm/plans/` → `.taskie/plans/`
@@ -204,7 +290,7 @@ Same content as above, but with path changes:
 
 ---
 
-### 5. CREATE: `taskie/commands/complete-task.md`
+### 8. CREATE: `taskie/commands/complete-task.md`
 
 ```markdown
 ---
@@ -219,69 +305,7 @@ $ARGUMENTS
 
 ---
 
-### 6. MODIFY: `.llm/actions/next-task.md`
-
-**Current content:**
-```markdown
-# Start Next Task Implementation
-
-Proceed to the next task in the implementation plan. You MUST implement ONLY ONE task, including ALL of the task's subtasks. You MUST NOT implement more than ONE task. You MUST run all must-run commands for EVERY subtask to verify completion.
-
-After you're done, document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{next-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`.
-
-If you don't know what the `{current-plan-dir}` or `{next-task-id}` are, use git history to find out which plan and task was modified most recently.
-
-Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
-```
-
-**New content:**
-```markdown
-# Start Next Task Implementation
-
-Proceed to the next task in the implementation plan. You MUST implement ONLY ONE task, including ALL of the task's subtasks. You MUST NOT implement more than ONE task. You MUST run all must-run commands for EVERY subtask to verify completion.
-
-## TDD Approach (When Using TDD Persona)
-
-If you are using the TDD persona from `.llm/personas/tdd.md`, follow this approach for each subtask:
-
-1. **RED**: Write ONE failing test based on the acceptance criteria
-   - Test must fail for the right reason (not syntax/import errors)
-   - Run test suite to confirm failure
-   - Do NOT write implementation code yet
-
-2. **GREEN**: Write MINIMAL code to make the test pass
-   - Address only the specific failure message
-   - Run test suite to confirm all tests pass
-   - Do NOT add extra functionality
-
-3. **REFACTOR**: Improve structure while tests stay green
-   - Only when all tests are passing
-   - Improve both implementation and test code
-   - Run tests after each change
-
-4. **REPEAT** until subtask functionality is complete
-
-## After Completion
-
-After you're done, document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{next-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`.
-
-If you don't know what the `{current-plan-dir}` or `{next-task-id}` are, use git history to find out which plan and task was modified most recently.
-
-Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
-```
-
----
-
-### 7. MODIFY: `taskie/actions/next-task.md`
-
-Same changes as above, but with plugin paths:
-- `.llm/personas/tdd.md` → `.taskie/personas/tdd.md`
-- `.llm/plans/` → `.taskie/plans/`
-- `.llm/ground-rules.md` → `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md`
-
----
-
-### 8. MODIFY: `.llm/actions/create-tasks.md`
+### 9. MODIFY: `.llm/actions/create-tasks.md`
 
 **Add to subtask template** (new field: `Acceptance criteria`):
 
@@ -301,7 +325,7 @@ Each subtask MUST have the following fields:
 
 ---
 
-### 9. MODIFY: `taskie/actions/create-tasks.md`
+### 10. MODIFY: `taskie/actions/create-tasks.md`
 
 Same change as above (add `Acceptance criteria` field to subtask template).
 
@@ -316,21 +340,21 @@ Same change as above (add `Acceptance criteria` field to subtask template).
     ↓
 /taskie:create-tasks → /taskie:tasks-review → /taskie:post-tasks-review
     ↓
-/taskie:next-task
+/taskie:next-task                            ← Original command (unchanged)
     ↓
 /taskie:code-review → /taskie:post-code-review (repeat until quality met)
     ↓
 (repeat for each task)
 ```
 
-### TDD Workflow (New - Using Persona)
+### TDD Workflow (New)
 
 ```
 /taskie:new-plan → /taskie:plan-review → /taskie:post-plan-review
     ↓
 /taskie:create-tasks → /taskie:tasks-review → /taskie:post-tasks-review
     ↓
-/taskie:next-task Use TDD persona from .llm/personas/tdd.md
+/taskie:next-task-tdd                        ← New TDD-enforced command
     ↓
 /taskie:code-review → /taskie:post-code-review (repeat until quality met)
     ↓
@@ -344,19 +368,7 @@ Same change as above (add `Acceptance criteria` field to subtask template).
     ↓
 /taskie:create-tasks → /taskie:tasks-review → /taskie:post-tasks-review
     ↓
-/taskie:complete-task                    ← Implement + Review + Fix in one shot
-    ↓
-(human reviews, repeat for each task)
-```
-
-### Unified + TDD Workflow (New - Combined)
-
-```
-/taskie:new-plan → /taskie:plan-review → /taskie:post-plan-review
-    ↓
-/taskie:create-tasks → /taskie:tasks-review → /taskie:post-tasks-review
-    ↓
-/taskie:complete-task Use TDD persona from .llm/personas/tdd.md
+/taskie:complete-task                        ← Implement + Review + Fix in one shot
     ↓
 (human reviews, repeat for each task)
 ```
@@ -368,9 +380,8 @@ Same change as above (add `Acceptance criteria` field to subtask template).
 | Command | Use When |
 |---------|----------|
 | `/taskie:next-task` | Standard implementation (unchanged) |
-| `/taskie:next-task` + TDD persona | Want TDD-style implementation |
+| `/taskie:next-task-tdd` | Want strict TDD enforcement (red-green-refactor) |
 | `/taskie:complete-task` | Want implement + review + fix in one command |
-| `/taskie:complete-task` + TDD persona | Want unified workflow with TDD discipline |
 
 ---
 
@@ -403,7 +414,8 @@ This fixes an existing gap and enables persona usage for plugin users.
 
 | Metric | Count |
 |--------|-------|
-| New files | 5 (+ 5 personas if copying to plugin) |
-| Modified files | 4 |
-| New commands | 1 (`complete-task`) |
+| New files | 8 (+ 5 existing personas if copying to plugin) |
+| Modified files | 2 |
+| New commands | 2 (`complete-task`, `next-task-tdd`) |
+| Modified commands | 0 |
 | Breaking changes | 0 |
