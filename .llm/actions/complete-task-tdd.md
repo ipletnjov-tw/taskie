@@ -10,7 +10,7 @@ Execute action `.llm/actions/next-task-tdd.md`.
 
 Execute action `.llm/actions/code-review.md`.
 
-If no issues, skip to Phase 4.
+If no issues are identified, skip to Phase 4.
 
 ## Phase 3: Fix ALL Issues
 
