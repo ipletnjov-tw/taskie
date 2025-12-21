@@ -10,9 +10,9 @@ Execute action `.llm/actions/next-task.md`.
 
 Execute action `.llm/actions/code-review.md`.
 
-If no blocking issues, skip to Phase 4.
+If no issues, skip to Phase 4.
 
-## Phase 3: Fix Blocking Issues
+## Phase 3: Fix Issues
 
 Execute action `.llm/actions/post-code-review.md`.
 

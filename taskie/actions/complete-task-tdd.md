@@ -10,9 +10,9 @@ Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/next-task-tdd.md`.
 
 Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`.
 
-If no blocking issues, skip to Phase 4.
+If no issues, skip to Phase 4.
 
-## Phase 3: Fix Blocking Issues
+## Phase 3: Fix Issues
 
 Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/post-code-review.md`.
 
