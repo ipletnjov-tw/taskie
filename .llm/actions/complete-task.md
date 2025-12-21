@@ -12,7 +12,7 @@ Execute action `.llm/actions/code-review.md`.
 
 If no issues, skip to Phase 4.
 
-## Phase 3: Fix Issues
+## Phase 3: Fix ALL Issues
 
 Execute action `.llm/actions/post-code-review.md`.
 

@@ -12,7 +12,7 @@ Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`.
 
 If no issues, skip to Phase 4.
 
-## Phase 3: Fix Issues
+## Phase 3: Fix ALL Issues
 
 Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/post-code-review.md`.
 
