@@ -1,41 +1,101 @@
-# Implementation Plan: TDD Integration
+# Implementation Plan: TDD Integration (Simplified)
 
-This plan integrates wbern/claude-instructions TDD concepts into Taskie without changing the distribution model or adopting fragment architecture.
-
----
-
-## Overview
-
-### New Commands (3)
-| Command | Purpose |
-|---------|---------|
-| `/taskie:complete-task` | Unified: implement → review → fix in one shot |
-| `/taskie:tdd-task` | TDD-enforced implementation (red-green-refactor) |
-| `/taskie:cycle` | Fine-grained: single red-green-refactor iteration |
-
-### Modified Files (3)
-| File | Change |
-|------|--------|
-| `.llm/actions/create-tasks.md` | Add TDD acceptance criteria to subtask template |
-| `.llm/actions/next-task.md` | Add optional TDD guidance section |
-| `.llm/ground-rules.md` | Add TDD principles section (optional enforcement) |
-
-### New Files (6)
-| File | Purpose |
-|------|---------|
-| `.llm/actions/complete-task.md` | Unified implementation cycle action |
-| `.llm/actions/tdd-task.md` | TDD-enforced task implementation |
-| `.llm/actions/cycle.md` | Single TDD iteration action |
-| `.llm/personas/tdd.md` | TDD engineer persona |
-| `taskie/commands/complete-task.md` | Command wrapper |
-| `taskie/commands/tdd-task.md` | Command wrapper |
-| `taskie/commands/cycle.md` | Command wrapper |
+This plan integrates wbern/claude-instructions TDD concepts into Taskie using the existing persona system rather than creating redundant commands.
 
 ---
 
-## File Changes
+## Repository Structure (Current)
 
-### 1. New File: `.llm/personas/tdd.md`
+```
+/home/user/taskie/
+├── .claude-plugin/
+│   └── marketplace.json                    # Marketplace registration
+│
+├── .llm/                                   # LOCAL/DEV version
+│   ├── actions/                            # 11 action files (paths use .llm/...)
+│   │   ├── code-review.md
+│   │   ├── continue-plan.md
+│   │   ├── continue-task.md
+│   │   ├── create-tasks.md
+│   │   ├── new-plan.md
+│   │   ├── next-task.md
+│   │   ├── plan-review.md
+│   │   ├── post-code-review.md
+│   │   ├── post-plan-review.md
+│   │   ├── post-tasks-review.md
+│   │   └── tasks-review.md
+│   ├── personas/                           # 5 personas
+│   │   ├── designer.md
+│   │   ├── qa.md
+│   │   ├── reviewer.md
+│   │   ├── swe.md
+│   │   └── writer.md
+│   ├── plans/                              # Local plans storage
+│   └── ground-rules.md
+│
+├── taskie/                                 # PLUGIN distribution
+│   ├── .claude-plugin/
+│   │   └── plugin.json                     # v1.1.5
+│   ├── actions/                            # 11 action files (paths use .taskie/..., @${CLAUDE_PLUGIN_ROOT}/...)
+│   ├── commands/                           # 11 slash command wrappers
+│   ├── ground-rules.md
+│   └── (NO personas/ folder)               # ← Gap: personas not distributed with plugin
+│
+├── README.md
+└── PROMPTS.md
+```
+
+### Key Observations
+
+1. **Two parallel structures** that must be kept in sync:
+   - `.llm/` → local dev, uses `.llm/` paths
+   - `taskie/` → plugin, uses `.taskie/` and `@${CLAUDE_PLUGIN_ROOT}/` paths
+
+2. **Personas are NOT in the plugin** - only in `.llm/personas/`
+   - Plugin's ground-rules.md references `.taskie/personas` but folder doesn't exist in plugin
+   - Decision needed: include personas in plugin or keep as local-only
+
+3. **Commands only in plugin** - `.llm/` has no `commands/` folder
+
+---
+
+## Simplified Approach
+
+### Rationale
+
+Instead of creating `/taskie:tdd-task` and `/taskie:cycle` commands:
+
+1. **TDD persona** provides behavior modification via existing persona system
+2. **Enhanced `next-task`** includes optional TDD guidance
+3. **Only `complete-task`** is truly new (combines 3 existing commands)
+
+This reduces complexity from 9 new/modified files to 5.
+
+---
+
+## Files to Change
+
+### Summary
+
+| Action | File | Purpose |
+|--------|------|---------|
+| **CREATE** | `.llm/personas/tdd.md` | TDD engineer persona |
+| **CREATE** | `taskie/personas/tdd.md` | TDD persona for plugin distribution |
+| **CREATE** | `.llm/actions/complete-task.md` | Unified workflow (local) |
+| **CREATE** | `taskie/actions/complete-task.md` | Unified workflow (plugin) |
+| **CREATE** | `taskie/commands/complete-task.md` | Command wrapper |
+| **MODIFY** | `.llm/actions/next-task.md` | Add TDD guidance section |
+| **MODIFY** | `taskie/actions/next-task.md` | Add TDD guidance section (plugin paths) |
+| **MODIFY** | `.llm/actions/create-tasks.md` | Add acceptance criteria field |
+| **MODIFY** | `taskie/actions/create-tasks.md` | Add acceptance criteria field (plugin paths) |
+
+**Total: 5 new files, 4 modified files**
+
+---
+
+## Detailed File Changes
+
+### 1. CREATE: `.llm/personas/tdd.md`
 
 ```markdown
 I am a disciplined test-driven development practitioner.
@@ -62,115 +122,13 @@ The following is a list of my core characteristics:
 
 ---
 
-### 2. New File: `.llm/actions/cycle.md`
+### 2. CREATE: `taskie/personas/tdd.md`
 
-```markdown
-# Execute Single TDD Cycle
-
-Perform exactly ONE red-green-refactor iteration for the given requirement.
-
-## RED Phase
-
-1. Write exactly ONE failing test that describes the desired behavior
-2. The test MUST fail for the right reason (not syntax/import errors)
-3. Run the test suite to confirm failure
-4. DO NOT write any implementation code yet
-5. DO NOT write multiple tests
-
-## GREEN Phase
-
-1. Write the MINIMAL code to make the failing test pass
-2. Address only the specific failure message
-3. Run the test suite to confirm all tests pass
-4. DO NOT add extra functionality beyond what the test requires
-5. DO NOT refactor yet
-
-## REFACTOR Phase
-
-1. Only proceed if ALL tests are passing
-2. Improve code structure (both implementation and test code)
-3. Run tests after each change to ensure they stay green
-4. Allowed: rename variables, extract methods, improve clarity
-5. NOT allowed: add new functionality, change behavior
-
-## Violations to Avoid
-
-- Adding multiple tests at once
-- Implementing beyond current test requirements
-- Refactoring with failing tests
-- Writing implementation before a failing test exists
-
-## Output
-
-After completing the cycle, report:
-1. What test was written (RED)
-2. What code was added (GREEN)
-3. What was improved (REFACTOR)
-4. Current test suite status
-
-$ARGUMENTS contains the specific requirement for this cycle.
-```
+Same content as above. This requires creating a new `taskie/personas/` directory.
 
 ---
 
-### 3. New File: `.llm/actions/tdd-task.md`
-
-```markdown
-# Implement Task Using TDD
-
-Implement the next pending task using strict test-driven development. You MUST implement ONLY ONE task, including ALL of its subtasks. Each subtask MUST follow the TDD cycle.
-
-## For Each Subtask
-
-### Step 1: Understand
-- Read the subtask requirements and acceptance criteria
-- Identify what tests need to exist for the subtask to be complete
-
-### Step 2: RED-GREEN-REFACTOR Loop
-Repeat until subtask functionality is complete:
-
-**RED**: Write ONE failing test
-- Test must describe desired behavior from acceptance criteria
-- Test must fail for the right reason
-- Run test suite to confirm failure
-
-**GREEN**: Write MINIMAL passing code
-- Only address the specific test failure
-- No extra features or error handling beyond test scope
-- Run test suite to confirm all tests pass
-
-**REFACTOR**: Improve structure
-- Only when tests are green
-- Improve both implementation and test code
-- Run tests after each change
-
-### Step 3: Verify & Commit
-- Run ALL must-run commands from subtask definition
-- Create git commit with descriptive message
-- Update subtask status and git commit hash
-
-## After All Subtasks Complete
-
-1. Update task status in `.llm/plans/{current-plan-dir}/tasks.md`
-2. Document progress summary in task file
-3. Push changes to remote
-
-## Violations That MUST Be Avoided
-
-- Writing implementation before a failing test
-- Adding multiple tests simultaneously
-- Implementing beyond what current test requires
-- Refactoring when tests are failing
-- Skipping the test verification step
-
-If you don't know what the `{current-plan-dir}` is, use git history to find the most recently modified plan.
-
-Remember, you MUST follow `.llm/ground-rules.md` at ALL times.
-```
-
----
-
-### 4. New File: `.llm/actions/complete-task.md`
+### 3. CREATE: `.llm/actions/complete-task.md`
 
 ```markdown
 # Complete Task with Review Cycle
@@ -238,41 +196,19 @@ Remember, you MUST follow `.llm/ground-rules.md` at ALL times.
 
 ---
 
-### 5. New File: `taskie/commands/cycle.md`
+### 4. CREATE: `taskie/actions/complete-task.md`
+
+Same content as above, but with path changes:
+- `.llm/plans/` → `.taskie/plans/`
+- `.llm/ground-rules.md` → `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md`
+
+---
+
+### 5. CREATE: `taskie/commands/complete-task.md`
 
 ```markdown
 ---
-description: Execute single TDD cycle (red-green-refactor). DO NOT use a subagent unless you are explicitly prompted to do so.
-disable-model-invocation: true
----
-
-Perform the action described in @${CLAUDE_PLUGIN_ROOT}/actions/cycle.md
-
-$ARGUMENTS
-```
-
----
-
-### 6. New File: `taskie/commands/tdd-task.md`
-
-```markdown
----
-description: Implement next task using strict TDD. DO NOT use a subagent unless you are explicitly prompted to do so.
-disable-model-invocation: true
----
-
-Perform the action described in @${CLAUDE_PLUGIN_ROOT}/actions/tdd-task.md
-
-$ARGUMENTS
-```
-
----
-
-### 7. New File: `taskie/commands/complete-task.md`
-
-```markdown
----
-description: Complete task with automatic review cycle. DO NOT use a subagent unless you are explicitly prompted to do so.
+description: Complete task with automatic review cycle (implement + review + fix). DO NOT use a subagent unless you are explicitly prompted to do so.
 disable-model-invocation: true
 ---
 
@@ -283,9 +219,71 @@ $ARGUMENTS
 
 ---
 
-### 8. Modified: `.llm/actions/create-tasks.md`
+### 6. MODIFY: `.llm/actions/next-task.md`
 
-Add to the subtask template (after existing fields):
+**Current content:**
+```markdown
+# Start Next Task Implementation
+
+Proceed to the next task in the implementation plan. You MUST implement ONLY ONE task, including ALL of the task's subtasks. You MUST NOT implement more than ONE task. You MUST run all must-run commands for EVERY subtask to verify completion.
+
+After you're done, document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{next-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`.
+
+If you don't know what the `{current-plan-dir}` or `{next-task-id}` are, use git history to find out which plan and task was modified most recently.
+
+Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+```
+
+**New content:**
+```markdown
+# Start Next Task Implementation
+
+Proceed to the next task in the implementation plan. You MUST implement ONLY ONE task, including ALL of the task's subtasks. You MUST NOT implement more than ONE task. You MUST run all must-run commands for EVERY subtask to verify completion.
+
+## TDD Approach (When Using TDD Persona)
+
+If you are using the TDD persona from `.llm/personas/tdd.md`, follow this approach for each subtask:
+
+1. **RED**: Write ONE failing test based on the acceptance criteria
+   - Test must fail for the right reason (not syntax/import errors)
+   - Run test suite to confirm failure
+   - Do NOT write implementation code yet
+
+2. **GREEN**: Write MINIMAL code to make the test pass
+   - Address only the specific failure message
+   - Run test suite to confirm all tests pass
+   - Do NOT add extra functionality
+
+3. **REFACTOR**: Improve structure while tests stay green
+   - Only when all tests are passing
+   - Improve both implementation and test code
+   - Run tests after each change
+
+4. **REPEAT** until subtask functionality is complete
+
+## After Completion
+
+After you're done, document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{next-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`.
+
+If you don't know what the `{current-plan-dir}` or `{next-task-id}` are, use git history to find out which plan and task was modified most recently.
+
+Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+```
+
+---
+
+### 7. MODIFY: `taskie/actions/next-task.md`
+
+Same changes as above, but with plugin paths:
+- `.llm/personas/tdd.md` → `.taskie/personas/tdd.md`
+- `.llm/plans/` → `.taskie/plans/`
+- `.llm/ground-rules.md` → `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md`
+
+---
+
+### 8. MODIFY: `.llm/actions/create-tasks.md`
+
+**Add to subtask template** (new field: `Acceptance criteria`):
 
 ```markdown
 Each subtask MUST have the following fields:
@@ -301,139 +299,66 @@ Each subtask MUST have the following fields:
 - **Acceptance criteria**: (List of specific, testable conditions that define "done")
 ```
 
-The **Acceptance criteria** field is new. It provides clear targets for TDD test cases.
-
 ---
 
-### 9. Modified: `.llm/actions/next-task.md`
+### 9. MODIFY: `taskie/actions/create-tasks.md`
 
-Add optional TDD guidance section:
-
-```markdown
-# Start Next Task Implementation
-
-Proceed to the next task in the implementation plan. You MUST implement ONLY ONE task, including ALL of the task's subtasks. You MUST NOT implement more than ONE task. You MUST run all must-run commands for EVERY subtask to verify completion.
-
-## TDD Approach (Recommended)
-
-For each subtask, consider following the test-first approach:
-1. Write a failing test based on the acceptance criteria
-2. Implement minimal code to pass the test
-3. Refactor while keeping tests green
-4. Repeat until subtask is complete
-
-This is recommended but not mandatory. Use `/taskie:tdd-task` for strict TDD enforcement.
-
-## After Completion
-
-After you're done, document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{next-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`.
-
-If you don't know what the `{current-plan-dir}` or `{next-task-id}` are, use git history to find out which plan and task was modified most recently.
-
-Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
-```
-
----
-
-### 10. Modified: `.llm/ground-rules.md`
-
-Add new section at the end:
-
-```markdown
-# TDD Principles (When Using TDD Commands)
-
-When using `/taskie:tdd-task` or `/taskie:cycle`, the following rules apply:
-
-## The Red-Green-Refactor Cycle
-
-1. **RED**: Write exactly one failing test before any implementation
-2. **GREEN**: Write minimal code to make the test pass
-3. **REFACTOR**: Improve code structure only when tests are green
-
-## Prohibited Actions
-
-- Writing implementation code before a failing test exists
-- Adding multiple tests simultaneously
-- Implementing beyond what the current test requires
-- Refactoring while tests are failing
-- Mentioning TDD in code comments, commits, or documentation
-
-## Incremental Development
-
-Address one thing at a time:
-- "Not defined" error → Create stub only
-- "Not a function" error → Add method signature only
-- Assertion failure → Implement minimal logic only
-```
+Same change as above (add `Acceptance criteria` field to subtask template).
 
 ---
 
 ## Final Workflow
 
-### Option A: Standard Workflow (Unchanged)
+### Standard Workflow (Unchanged)
 
 ```
-/taskie:new-plan "feature description"
+/taskie:new-plan → /taskie:plan-review → /taskie:post-plan-review
     ↓
-/taskie:plan-review → /taskie:post-plan-review (repeat)
-    ↓
-/taskie:create-tasks
-    ↓
-/taskie:tasks-review → /taskie:post-tasks-review (repeat)
+/taskie:create-tasks → /taskie:tasks-review → /taskie:post-tasks-review
     ↓
 /taskie:next-task
     ↓
-/taskie:code-review → /taskie:post-code-review (repeat)
+/taskie:code-review → /taskie:post-code-review (repeat until quality met)
     ↓
-(repeat next-task cycle for each task)
+(repeat for each task)
 ```
 
-### Option B: TDD Workflow (New)
+### TDD Workflow (New - Using Persona)
 
 ```
-/taskie:new-plan "feature description"
+/taskie:new-plan → /taskie:plan-review → /taskie:post-plan-review
     ↓
-/taskie:plan-review → /taskie:post-plan-review (repeat)
+/taskie:create-tasks → /taskie:tasks-review → /taskie:post-tasks-review
     ↓
-/taskie:create-tasks
+/taskie:next-task Use TDD persona from .llm/personas/tdd.md
     ↓
-/taskie:tasks-review → /taskie:post-tasks-review (repeat)
+/taskie:code-review → /taskie:post-code-review (repeat until quality met)
     ↓
-/taskie:tdd-task                    ← TDD-enforced implementation
-    ↓
-/taskie:code-review → /taskie:post-code-review (repeat)
-    ↓
-(repeat tdd-task cycle for each task)
+(repeat for each task)
 ```
 
-### Option C: Unified Workflow (New, Fastest)
+### Unified Workflow (New - Fastest)
 
 ```
-/taskie:new-plan "feature description"
+/taskie:new-plan → /taskie:plan-review → /taskie:post-plan-review
     ↓
-/taskie:plan-review → /taskie:post-plan-review (repeat)
+/taskie:create-tasks → /taskie:tasks-review → /taskie:post-tasks-review
     ↓
-/taskie:create-tasks
+/taskie:complete-task                    ← Implement + Review + Fix in one shot
     ↓
-/taskie:tasks-review → /taskie:post-tasks-review (repeat)
-    ↓
-/taskie:complete-task               ← Implement + Review + Fix in one shot
-    ↓
-(human reviews, then repeat for each task)
+(human reviews, repeat for each task)
 ```
 
-### Option D: Fine-Grained TDD (New, Most Control)
-
-For maximum control during implementation:
+### Unified + TDD Workflow (New - Combined)
 
 ```
-/taskie:cycle "add email validation function"
+/taskie:new-plan → /taskie:plan-review → /taskie:post-plan-review
     ↓
-/taskie:cycle "add invalid email rejection"
+/taskie:create-tasks → /taskie:tasks-review → /taskie:post-tasks-review
     ↓
-/taskie:cycle "add edge case handling"
+/taskie:complete-task Use TDD persona from .llm/personas/tdd.md
     ↓
-/taskie:code-review
+(human reviews, repeat for each task)
 ```
 
 ---
@@ -442,17 +367,43 @@ For maximum control during implementation:
 
 | Command | Use When |
 |---------|----------|
-| `/taskie:next-task` | Standard implementation (existing behavior) |
-| `/taskie:tdd-task` | Want strict TDD enforcement per subtask |
-| `/taskie:complete-task` | Want implementation + review + fix in one command |
-| `/taskie:cycle` | Want fine-grained control over each test iteration |
+| `/taskie:next-task` | Standard implementation (unchanged) |
+| `/taskie:next-task` + TDD persona | Want TDD-style implementation |
+| `/taskie:complete-task` | Want implement + review + fix in one command |
+| `/taskie:complete-task` + TDD persona | Want unified workflow with TDD discipline |
 
 ---
 
-## Migration Notes
+## Side Effect: Personas in Plugin
 
-- All existing workflows continue to work unchanged
-- New commands are additive, no breaking changes
-- TDD guidance in `next-task.md` is optional/informational
-- Ground-rules TDD section only applies when using TDD commands
-- Version bump to 1.2.0 recommended
+This implementation **requires creating `taskie/personas/` directory** in the plugin distribution.
+
+Currently, personas only exist in `.llm/personas/` (local dev). The plugin's `ground-rules.md` references `.taskie/personas` but the directory doesn't exist.
+
+**Recommendation**: Add all 6 personas (including new TDD) to `taskie/personas/`:
+- `designer.md`
+- `qa.md`
+- `reviewer.md`
+- `swe.md`
+- `writer.md`
+- `tdd.md` (new)
+
+This fixes an existing gap and enables persona usage for plugin users.
+
+---
+
+## Version Changes
+
+- Bump `taskie/.claude-plugin/plugin.json` version to `1.2.0`
+- Bump `.claude-plugin/marketplace.json` plugin version to `1.2.0`
+
+---
+
+## Summary
+
+| Metric | Count |
+|--------|-------|
+| New files | 5 (+ 5 personas if copying to plugin) |
+| Modified files | 4 |
+| New commands | 1 (`complete-task`) |
+| Breaking changes | 0 |
