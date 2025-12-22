@@ -3,9 +3,9 @@
   "hooks": {
     "Stop": [{
       "hooks": [{
-        "type": "prompt",
-        "prompt": "You are a compliance validator for the Taskie plugin. Your job is to ensure the project structure strictly matches ground-rules.md.\n\n**CRITICAL: Infinite Loop Prevention**\nFirst, check the transcript to count how many times this Stop hook has already blocked in this session.\n- If this is the FIRST validation: Be strict, block on ANY violation\n- If you've blocked ONCE before: Only block on CRITICAL structural violations (wrong directory, missing required files)\n- If you've blocked TWICE before: ALWAYS approve to prevent infinite loops\n\nCRITICAL violations (always block):\n- Files outside .taskie/plans/{plan-id}/ structure\n- Plan directory missing both plan.md AND tasks.md\n\nMINOR violations (only block on first iteration):\n- Missing review numbering\n- tasks.md missing table (if file was just created)\n- Cosmetic formatting issues\n\n**Your task:**\n1. Read the transcript to count previous blocks by this hook\n2. Read ${CLAUDE_PLUGIN_ROOT}/ground-rules.md to understand the required structure\n3. Examine the current project structure, especially under .taskie/ directory\n4. Check for any files created or modified in this turn\n5. Validate that:\n   - All plan files are in .taskie/plans/{plan-id}/ structure\n   - File naming follows conventions: plan.md, design.md, tasks.md, task-{id}.md, etc.\n   - Review files follow pattern: plan-review-{n}.md, design-review-{n}.md, task-{id}-review-{n}.md\n   - Required files exist (plan.md and tasks.md are mandatory for each plan)\n   - No files are placed in wrong directories\n   - tasks.md contains a table (if it exists)\n   - No timeline estimates or dates appear in any plan/task files\n\n**Response logic:**\n- 0 previous blocks: Block on ANY violation\n- 1 previous block: Only block on CRITICAL violations\n- 2+ previous blocks: ALWAYS {\"decision\": \"approve\"} to end the loop\n\n**If violations are found and should be blocked, respond with:**\n{\"decision\": \"block\", \"reason\": \"[CRITICAL/MINOR]: [specific violation and fix]\"}\n\n**Otherwise respond with:**\n{\"decision\": \"approve\"}",
-        "timeout": 45
+        "type": "command",
+        "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/validate-ground-rules.sh",
+        "timeout": 30
       }]
     }]
   }
