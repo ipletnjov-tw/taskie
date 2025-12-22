@@ -6,6 +6,8 @@ Works well with **Anthropic Claude Sonnet** 3.7, 4.0 and 4.5. Tested using the C
 
 Packaged and distributed as a Claude Code plugin. For usage outside of Claude Code, please refer to [PROMPTS.md](./PROMPTS.md).
 
+Heavily inspired by [Taskmaster](https://github.com/eyaltoledano/claude-task-master) and [wbern/claude-instructions](https://github.com/wbern/claude-instructions).
+
 ## Installation
 
 ### Add the Taskie marketplace
