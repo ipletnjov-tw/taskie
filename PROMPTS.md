@@ -58,7 +58,28 @@ The LLM will very critically scrutinize its own implementation. You will then wa
 
 Note: This does **not** mean that you get to skip reviewing the code yourself. You need to review **everything**, every step of the way.
 
-Once the first task is done, move to the next one using `Perform the action described in .llm/actions/next-task.md.`. Repeat until every task is done! 🚀 
+Once the first task is done, move to the next one using `Perform the action described in .llm/actions/next-task.md.`. Repeat until every task is done! 🚀
+
+### TDD Workflow
+
+For strict test-driven development, use:
+```
+Perform the action described in .llm/actions/next-task-tdd.md.
+```
+
+This enforces the red-green-refactor cycle for each subtask.
+
+### Unified Workflow
+
+To combine implementation, review, and fixes in one action:
+```
+Perform the action described in .llm/actions/complete-task.md.
+```
+
+Or with TDD:
+```
+Perform the action described in .llm/actions/complete-task-tdd.md.
+```
 
 ## FAQ
 

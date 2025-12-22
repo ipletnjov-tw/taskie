@@ -26,4 +26,5 @@ Each subtask MUST have the following fields:
 - **Complexity**: (1 - 10)
 - **Test approach**:
 - **Must-run commands**: (For completion verification, e.g. `npm test`, `npm run lint`, etc)
+- **Acceptance criteria**: (Specific, testable conditions that define "done")
 ```

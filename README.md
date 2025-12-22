@@ -6,6 +6,8 @@ Works well with **Anthropic Claude Sonnet** 3.7, 4.0 and 4.5. Tested using the C
 
 Packaged and distributed as a Claude Code plugin. For usage outside of Claude Code, please refer to [PROMPTS.md](./PROMPTS.md).
 
+Heavily inspired by [Taskmaster](https://github.com/eyaltoledano/claude-task-master) and [wbern/claude-instructions](https://github.com/wbern/claude-instructions).
+
 ## Installation
 
 ### Add the Taskie marketplace
@@ -40,6 +42,14 @@ Once installed, you'll have access to these slash commands:
 ### Code Review Commands
 - `/taskie:code-review` - Critically review implemented code
 - `/taskie:post-code-review` - Apply code review feedback
+
+### TDD Commands
+- `/taskie:next-task-tdd` - Implement next task using strict TDD (red-green-refactor)
+- `/taskie:complete-task-tdd` - TDD implementation with automatic review cycle
+
+### Unified Workflow Commands
+- `/taskie:complete-task` - Implement + review + fix in one command
+- `/taskie:complete-task-tdd` - TDD variant of complete-task
 
 ## Usage
 
