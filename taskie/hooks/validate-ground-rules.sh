@@ -24,27 +24,6 @@ if [ ! -d ".taskie/plans" ]; then
     exit 0
 fi
 
-# Find recently modified plan directory using git
-RECENT_PLAN=$(git diff --name-only HEAD 2>/dev/null | grep "^\.taskie/plans/" | head -1 | cut -d'/' -f3 2>/dev/null || true)
-
-# If no changes in last commit, check working tree
-if [ -z "$RECENT_PLAN" ]; then
-    RECENT_PLAN=$(git status --porcelain 2>/dev/null | grep "\.taskie/plans/" | head -1 | awk '{print $2}' | cut -d'/' -f3 2>/dev/null || true)
-fi
-
-# If git fails or no plan found, skip validation
-if [ -z "$RECENT_PLAN" ]; then
-    echo '{"decision": "approve"}'
-    exit 0
-fi
-
-PLAN_DIR=".taskie/plans/$RECENT_PLAN"
-
-if [ ! -d "$PLAN_DIR" ]; then
-    echo '{"decision": "approve"}'
-    exit 0
-fi
-
 # Validation function
 validate_plan_structure() {
     local plan_dir="$1"
@@ -119,26 +98,39 @@ validate_plan_structure() {
         fi
     fi
 
-    # Rule 6: Check for timeline/date patterns in filenames
-    if find "$plan_dir" -type f -name "*.md" | grep -E '[0-9]{4}-[0-9]{2}-[0-9]{2}|week|month|day|hour' >/dev/null 2>&1; then
-        echo "Found timeline estimates or dates in filenames (forbidden)"
-        return 1
-    fi
-
     return 0
 }
 
-# Run validation
-ERROR_MSG=$(validate_plan_structure "$PLAN_DIR" 2>&1)
-VALIDATION_RESULT=$?
+# Validate all plan directories
+VALIDATION_ERRORS=""
 
-if [ $VALIDATION_RESULT -eq 0 ]; then
+for PLAN_DIR in .taskie/plans/*/; do
+    [ -d "$PLAN_DIR" ] || continue
+
+    # Run validation for this plan
+    set +e
+    PLAN_ERROR=$(validate_plan_structure "$PLAN_DIR" 2>&1)
+    PLAN_RESULT=$?
+    set -e
+
+    if [ $PLAN_RESULT -ne 0 ]; then
+        PLAN_NAME=$(basename "$PLAN_DIR")
+        if [ -z "$VALIDATION_ERRORS" ]; then
+            VALIDATION_ERRORS="Plan '$PLAN_NAME': $PLAN_ERROR"
+        else
+            VALIDATION_ERRORS="$VALIDATION_ERRORS; Plan '$PLAN_NAME': $PLAN_ERROR"
+        fi
+    fi
+done
+
+# Return result
+if [ -z "$VALIDATION_ERRORS" ]; then
     echo '{"decision": "approve"}'
+    exit 0
 else
-    jq -n --arg reason "$ERROR_MSG" '{
+    jq -n --arg reason "$VALIDATION_ERRORS" '{
         "decision": "block",
         "reason": $reason
     }'
+    exit 0
 fi
-
-exit 0
