@@ -98,6 +98,26 @@ validate_plan_structure() {
         fi
     fi
 
+    # Rule 6: tasks.md must contain ONLY a markdown table
+    if [ -f "$plan_dir/tasks.md" ]; then
+        # Every non-empty line must start and end with |
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Skip empty lines
+            [ -z "$line" ] && continue
+            # Line must start with | and end with |
+            if [[ ! "$line" =~ ^\|.*\|$ ]]; then
+                echo "tasks.md must contain ONLY the tasks table (found non-table content)"
+                return 1
+            fi
+        done < "$plan_dir/tasks.md"
+
+        # Must have at least one table row
+        if ! grep -q "^|" "$plan_dir/tasks.md"; then
+            echo "tasks.md must contain a table (no table rows found)"
+            return 1
+        fi
+    fi
+
     return 0
 }
 
