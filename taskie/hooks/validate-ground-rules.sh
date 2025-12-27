@@ -24,17 +24,25 @@ if [ ! -d ".taskie/plans" ]; then
     exit 0
 fi
 
-# Validation function
+# Validation function - collects ALL violations
 validate_plan_structure() {
     local plan_dir="$1"
+    local errors=""
+
+    add_error() {
+        if [ -z "$errors" ]; then
+            errors="$1"
+        else
+            errors="$errors; $1"
+        fi
+    }
 
     # Rule 1: plan.md must exist
     if [ ! -f "$plan_dir/plan.md" ]; then
-        echo "Missing required file: plan.md"
-        return 1
+        add_error "Missing required file: plan.md"
     fi
 
-    # Rule 1.5: Validate file naming conventions
+    # Rule 2: Validate file naming conventions
     for file in "$plan_dir"/*.md; do
         [ -e "$file" ] || continue
         local filename=$(basename "$file")
@@ -53,18 +61,16 @@ validate_plan_structure() {
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^(plan|design|tasks)-post-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-post-review-[0-9]+\.md$ ]]; then
-            echo "Invalid filename: $filename (doesn't match naming conventions)"
-            return 1
+            add_error "Invalid filename: $filename"
         fi
     done
 
-    # Rule 2: Check for nested directories (files should be directly in plan dir)
+    # Rule 3: Check for nested directories (files should be directly in plan dir)
     if find "$plan_dir" -mindepth 2 -type f -name "*.md" 2>/dev/null | grep -q .; then
-        echo "Files found in nested directories (must be directly in $plan_dir)"
-        return 1
+        add_error "Files found in nested directories"
     fi
 
-    # Rule 3: Review files need their base files
+    # Rule 4: Review files need their base files
     for review_file in "$plan_dir"/*-review-[0-9]*.md; do
         [ -e "$review_file" ] || continue
 
@@ -72,85 +78,76 @@ validate_plan_structure() {
 
         if [ "$base_name" = "plan" ] || [ "$base_name" = "design" ] || [ "$base_name" = "tasks" ]; then
             if [ ! -f "$plan_dir/${base_name}.md" ]; then
-                echo "Review file $(basename "$review_file") exists but ${base_name}.md does not"
-                return 1
+                add_error "$(basename "$review_file") requires ${base_name}.md"
             fi
         fi
     done
 
-    # Rule 4: Post-review files need their review files
+    # Rule 5: Post-review files need their review files
     for post_review in "$plan_dir"/*-post-review-[0-9]*.md; do
         [ -e "$post_review" ] || continue
 
         local review_file=$(basename "$post_review" | sed 's/-post-review-/-review-/')
 
         if [ ! -f "$plan_dir/$review_file" ]; then
-            echo "Post-review file $(basename "$post_review") exists but $review_file does not"
-            return 1
+            add_error "$(basename "$post_review") requires $review_file"
         fi
     done
 
-    # Rule 5: If task files exist, tasks.md should exist
+    # Rule 6: If task files exist, tasks.md should exist
     if ls "$plan_dir"/task-*.md 2>/dev/null | grep -v "review" | grep -q .; then
         if [ ! -f "$plan_dir/tasks.md" ]; then
-            echo "Task files exist but tasks.md is missing"
-            return 1
+            add_error "Task files exist but tasks.md is missing"
         fi
     fi
 
-    # Rule 6: tasks.md must contain ONLY a markdown table
+    # Rule 7: tasks.md must contain ONLY a markdown table
     if [ -f "$plan_dir/tasks.md" ]; then
-        # Every non-empty line must start and end with |
+        local table_error=""
         while IFS= read -r line || [ -n "$line" ]; do
-            # Skip empty lines
             [ -z "$line" ] && continue
-            # Line must start with | and end with |
             if [[ ! "$line" =~ ^\|.*\|$ ]]; then
-                echo "tasks.md must contain ONLY the tasks table (found non-table content)"
-                return 1
+                table_error="tasks.md contains non-table content"
+                break
             fi
         done < "$plan_dir/tasks.md"
 
-        # Must have at least one table row
-        if ! grep -q "^|" "$plan_dir/tasks.md"; then
-            echo "tasks.md must contain a table (no table rows found)"
-            return 1
+        if [ -n "$table_error" ]; then
+            add_error "$table_error"
+        elif ! grep -q "^|" "$plan_dir/tasks.md"; then
+            add_error "tasks.md has no table rows"
         fi
     fi
 
+    if [ -n "$errors" ]; then
+        echo "$errors"
+        return 1
+    fi
     return 0
 }
 
-# Validate all plan directories
-VALIDATION_ERRORS=""
+# Find the most recently modified plan directory by file timestamp
+RECENT_PLAN=$(find .taskie/plans -mindepth 2 -maxdepth 2 -type f -name "*.md" -printf '%T@ %h\n' 2>/dev/null | sort -rn | head -1 | awk '{print $2}')
 
-for PLAN_DIR in .taskie/plans/*/; do
-    [ -d "$PLAN_DIR" ] || continue
-
-    # Run validation for this plan
-    set +e
-    PLAN_ERROR=$(validate_plan_structure "$PLAN_DIR" 2>&1)
-    PLAN_RESULT=$?
-    set -e
-
-    if [ $PLAN_RESULT -ne 0 ]; then
-        PLAN_NAME=$(basename "$PLAN_DIR")
-        if [ -z "$VALIDATION_ERRORS" ]; then
-            VALIDATION_ERRORS="Plan '$PLAN_NAME': $PLAN_ERROR"
-        else
-            VALIDATION_ERRORS="$VALIDATION_ERRORS; Plan '$PLAN_NAME': $PLAN_ERROR"
-        fi
-    fi
-done
-
-# Return result
-if [ -z "$VALIDATION_ERRORS" ]; then
+# If no plan files found, approve
+if [ -z "$RECENT_PLAN" ]; then
     echo '{"decision": "approve"}'
     exit 0
+fi
+
+# Validate only the most recently modified plan
+set +e
+PLAN_ERROR=$(validate_plan_structure "$RECENT_PLAN" 2>&1)
+PLAN_RESULT=$?
+set -e
+
+if [ $PLAN_RESULT -eq 0 ]; then
+    echo '{"decision": "approve"}'
 else
-    jq -n --arg reason "$VALIDATION_ERRORS" '{
+    PLAN_NAME=$(basename "$RECENT_PLAN")
+    jq -n --arg reason "Plan '$PLAN_NAME': $PLAN_ERROR" '{
         "decision": "block",
         "reason": $reason
     }'
-    exit 0
 fi
+exit 0
