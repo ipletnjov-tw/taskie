@@ -4,23 +4,35 @@ This is a simple framework of reusable prompts that makes it easy to use LLMs to
 
 Works well with **Anthropic Claude Sonnet** 3.7, 4.0 and 4.5. Tested using the Cursor IDE (VSCode), Cursor Background Agents, Claude Code CLI and Claude Code Web.
 
+**Now also supports OpenAI Codex CLI!** See [CODEX.md](./CODEX.md) for installation and usage.
+
 Packaged and distributed as a Claude Code plugin. For usage outside of Claude Code, please refer to [PROMPTS.md](./PROMPTS.md).
 
 Heavily inspired by [Taskmaster](https://github.com/eyaltoledano/claude-task-master) and [wbern/claude-instructions](https://github.com/wbern/claude-instructions).
 
 ## Installation
 
-### Add the Taskie marketplace
+### For Claude Code
+
+#### Add the Taskie marketplace
 
 ```bash
 /plugin marketplace add ipletnjov-tw/taskie
 ```
 
-### Install the plugin
+#### Install the plugin
 
 ```bash
 /plugin install taskie@taskie
 ```
+
+### For OpenAI Codex CLI
+
+```bash
+./install-codex.sh
+```
+
+See [CODEX.md](./CODEX.md) for detailed instructions and usage.
 
 ## Available Commands
 
