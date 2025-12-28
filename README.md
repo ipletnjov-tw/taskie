@@ -4,9 +4,7 @@ This is a simple framework of reusable prompts that makes it easy to use LLMs to
 
 Works well with **Anthropic Claude Sonnet** 3.7, 4.0 and 4.5. Tested using the Cursor IDE (VSCode), Cursor Background Agents, Claude Code CLI and Claude Code Web.
 
-**Now also supports OpenAI Codex CLI!** See [CODEX.md](./CODEX.md) for installation and usage.
-
-Packaged and distributed as a Claude Code plugin. For usage outside of Claude Code, please refer to [PROMPTS.md](./PROMPTS.md).
+Packaged and distributed as a Claude Code plugin. Also works with OpenAI Codex CLI and other LLM tools. For usage outside of Claude Code and Codex CLI, please refer to [PROMPTS.md](./PROMPTS.md).
 
 Heavily inspired by [Taskmaster](https://github.com/eyaltoledano/claude-task-master) and [wbern/claude-instructions](https://github.com/wbern/claude-instructions).
 
@@ -28,15 +26,20 @@ Heavily inspired by [Taskmaster](https://github.com/eyaltoledano/claude-task-mas
 
 ### For OpenAI Codex CLI
 
+Run the installation script from the Taskie directory:
+
 ```bash
 ./install-codex.sh
 ```
 
-See [CODEX.md](./CODEX.md) for detailed instructions and usage.
+This copies all prompts to `~/.codex/prompts/taskie/` and sets up the `.llm/` directory structure. Restart Codex CLI or start a new session to load the prompts.
 
 ## Available Commands
 
 Once installed, you'll have access to these slash commands:
+
+**Claude Code:** `/taskie:command-name`
+**Codex CLI:** `/prompts:taskie/command-name`
 
 ### Planning Commands
 - `/taskie:new-plan` - Create a new implementation plan
@@ -65,6 +68,8 @@ Once installed, you'll have access to these slash commands:
 
 ## Usage
 
+### Claude Code
+
 All commands support appending additional instructions. Most of the time, your prompts will look **exactly** like this:
 
 ```bash
@@ -76,6 +81,22 @@ Or with additional context:
 ```bash
 /taskie:command-name Additional instructions here
 ```
+
+### Codex CLI
+
+For Codex CLI, use the `/prompts:taskie/` prefix:
+
+```bash
+/prompts:taskie/command-name
+```
+
+Or with additional instructions:
+
+```bash
+/prompts:taskie/command-name Additional instructions here
+```
+
+The workflow is identical to Claude Code. Examples below use Claude Code syntax; for Codex CLI, replace `/taskie:` with `/prompts:taskie/`.
 
 ### Kick off a new implementation plan
 
