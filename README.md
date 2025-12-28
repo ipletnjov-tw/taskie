@@ -32,7 +32,7 @@ Run the installation script from the Taskie directory:
 ./install-codex.sh
 ```
 
-This copies all prompts to `~/.codex/prompts/taskie/` and sets up the `.llm/` directory structure. Restart Codex CLI or start a new session to load the prompts.
+This copies all prompts to `~/.codex/prompts/taskie/`. Restart Codex CLI or start a new session to load the prompts.
 
 ## Available Commands
 

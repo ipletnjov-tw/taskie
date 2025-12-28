@@ -25,14 +25,6 @@ mkdir -p "$CODEX_PROMPTS_DIR"
 echo "Copying prompts to $CODEX_PROMPTS_DIR..."
 cp -v "$SOURCE_DIR"/*.md "$CODEX_PROMPTS_DIR/"
 
-# Copy ground-rules.md to .llm directory if it doesn't exist
-if [ ! -f ".llm/ground-rules.md" ]; then
-    echo ""
-    echo "Setting up .llm directory..."
-    mkdir -p .llm/plans
-    cp -v "$SCRIPT_DIR/.llm/ground-rules.md" .llm/
-fi
-
 echo ""
 echo "✓ Installation complete!"
 echo ""
