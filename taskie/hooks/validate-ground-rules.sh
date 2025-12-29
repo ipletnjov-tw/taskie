@@ -51,15 +51,19 @@ validate_plan_structure() {
         # - plan.md, design.md, tasks.md
         # - task-{id}.md
         # - plan-review-{n}.md, design-review-{n}.md, tasks-review-{n}.md
+        # - all-code-review-{n}.md
         # - task-{id}-review-{n}.md
         # - plan-post-review-{n}.md, design-post-review-{n}.md, tasks-post-review-{n}.md
+        # - all-code-post-review-{n}.md
         # - task-{id}-post-review-{n}.md
 
         if [[ ! "$filename" =~ ^(plan|design|tasks)\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+\.md$ ]] && \
            [[ ! "$filename" =~ ^(plan|design|tasks)-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^all-code-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^(plan|design|tasks)-post-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^all-code-post-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-post-review-[0-9]+\.md$ ]]; then
             add_error "Invalid filename: $filename"
         fi
