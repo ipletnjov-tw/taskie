@@ -34,14 +34,14 @@ Run the installation script from the Taskie directory:
 ./install-codex.sh
 ```
 
-This copies all prompts to `~/.codex/prompts/taskie/`. Restart Codex CLI or start a new session to load the prompts.
+This copies all prompts to `~/.codex/prompts/` with `taskie-` prefix. Restart Codex CLI or start a new session to load the prompts.
 
 ## Available Commands
 
 Once installed, you'll have access to these slash commands:
 
 **Claude Code:** `/taskie:command-name`
-**Codex CLI:** `/prompts:taskie/command-name`
+**Codex CLI:** `/prompts:taskie-command-name`
 
 ### Planning Commands
 - `/taskie:new-plan` - Create a new implementation plan
@@ -86,19 +86,19 @@ Or with additional context:
 
 ### Codex CLI
 
-For Codex CLI, use the `/prompts:taskie/` prefix:
+For Codex CLI, use the `/prompts:taskie-` prefix:
 
 ```bash
-/prompts:taskie/command-name
+/prompts:taskie-command-name
 ```
 
 Or with additional instructions:
 
 ```bash
-/prompts:taskie/command-name Additional instructions here
+/prompts:taskie-command-name Additional instructions here
 ```
 
-The workflow is identical to Claude Code. Examples below use Claude Code syntax; for Codex CLI, replace `/taskie:` with `/prompts:taskie/`.
+The workflow is identical to Claude Code. Examples below use Claude Code syntax; for Codex CLI, replace `/taskie:` with `/prompts:taskie-`.
 
 ### Kick off a new implementation plan
 
