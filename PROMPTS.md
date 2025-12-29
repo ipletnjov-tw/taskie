@@ -40,6 +40,15 @@ After the review is written, prompt `Perform the action described in .llm/action
 
 Repeat the review & post-review cycle until the tasks are in good shape. 🔁
 
+#### Add a task to an existing plan
+
+If you need to add a new task to an in-progress implementation plan:
+```
+Perform the action described in .llm/actions/add-task.md.
+```
+
+This will add a new task to the existing `tasks.md` table and create the corresponding `task-{id}.md` file.
+
 ### Let's write some code! ⌨️
 
 After you're done iterating on the plan, design and tasks, we can move on to the meat of the work:
