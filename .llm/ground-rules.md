@@ -54,6 +54,11 @@ Each plan will have the same basic directory structure:
 │   │   ├── . . .
 │   │   ├── tasks-review-n.md            # Task List and Tasks Review n
 │   │   ├── tasks-post-review-n.md       # Post-Review Fixes Summary n
+│   │   ├── all-code-review-1.md         # Complete Implementation Review 1
+│   │   ├── all-code-post-review-1.md    # Post-Review Fixes Summary 1
+│   │   ├── . . .
+│   │   ├── all-code-review-n.md         # Complete Implementation Review n
+│   │   ├── all-code-post-review-n.md    # Post-Review Fixes Summary n
 │   │   ├── task-1.md                    # Task 1 and Subtasks
 │   │   ├── task-1-review-1.md           # Task 1 Review 1
 │   │   ├── task-1-post-review-1.md      # Post-Review Fixes Summary 1
@@ -87,6 +92,9 @@ After addressing issues from a tasks review, a `tasks-post-review-{review-id}.md
 
 Each task will have its own `task-{task-id}.md` file and a number of `task-{task-id}-review-{review-id}.md` review files.
 After addressing issues from a task review, a `task-{task-id}-post-review-{review-id}.md` file documents the fixes made.
+
+The complete implementation can be reviewed across all tasks using `all-code-review-{review-id}.md` review files.
+After addressing issues from a complete implementation review, an `all-code-post-review-{review-id}.md` file documents the fixes made.
 
 ## Tasks
 
