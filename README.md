@@ -34,6 +34,7 @@ Once installed, you'll have access to these slash commands:
 
 ### Task Management Commands
 - `/taskie:create-tasks` - Generate tasks from the current plan
+- `/taskie:add-task` - Add a new task to an existing implementation plan
 - `/taskie:tasks-review` - Review the task list and task files
 - `/taskie:post-tasks-review` - Address task review comments
 - `/taskie:next-task` - Start implementing the next task

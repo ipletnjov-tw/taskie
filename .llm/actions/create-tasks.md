@@ -11,8 +11,6 @@ Each task in the table MUST have the following fields:
 * Description
 * Test strategy
 
-The `tasks.md` file MUST NOT contain anything other than the tasks table. You MUST add a disclaimer below the table that forbids adding anything else to the file.
-
 For each task, you MUST create a separate Markdown file named `.llm/plans/{current-plan-dir}/task-{task-id}.md`. For each task, you MUST create a list of subtasks into the task file. Each subtask must have a separate section in the task file.
 
 Each subtask MUST have the following fields:
