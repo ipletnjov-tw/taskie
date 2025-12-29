@@ -15,7 +15,7 @@ You MUST create a separate Markdown file named `.llm/plans/{current-plan-dir}/ta
 
 Each subtask MUST have the following fields:
 ```md
-### Subtask {task-id}.{subtask-number}: Sample Subtask
+### Subtask 1.1: Sample Subtask
 - **Short description**:
 - **Status**: pending
 - **Sample git commit message**:
