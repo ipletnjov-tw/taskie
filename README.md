@@ -43,6 +43,8 @@ Once installed, you'll have access to these slash commands:
 ### Code Review Commands
 - `/taskie:code-review` - Critically review implemented code
 - `/taskie:post-code-review` - Apply code review feedback
+- `/taskie:all-code-review` - Review ALL code across ALL tasks in the plan
+- `/taskie:post-all-code-review` - Apply complete implementation review feedback
 
 ### TDD Commands
 - `/taskie:next-task-tdd` - Implement next task using strict TDD (red-green-refactor)
