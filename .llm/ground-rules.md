@@ -95,9 +95,6 @@ After addressing issues from a tasks review, a `tasks-post-review-{review-id}.md
 Each task will have its own `task-{task-id}.md` file and a number of `task-{task-id}-review-{review-id}.md` review files.
 After addressing issues from a task review, a `task-{task-id}-post-review-{review-id}.md` file documents the fixes made.
 
-The complete implementation can be reviewed across all tasks using `all-code-review-{review-id}.md` review files.
-After addressing issues from a complete implementation review, an `all-code-post-review-{review-id}.md` file documents the fixes made.
-
 ## Tasks
 
 The subtasks MUST be updated after each iteration. The table in the `tasks.md` MUST be updated after each iteration and each review.
