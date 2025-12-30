@@ -69,6 +69,20 @@ Note: This does **not** mean that you get to skip reviewing the code yourself. Y
 
 Once the first task is done, move to the next one using `Perform the action described in .llm/actions/next-task.md.`. Repeat until every task is done! 🚀
 
+### Complete Implementation Review
+
+After completing all tasks (or at any point during implementation), you can review ALL code across the entire plan:
+```
+Perform the action described in .llm/actions/all-code-review.md.
+```
+
+This performs a comprehensive review of the entire implementation against the original plan requirements. Then apply the feedback:
+```
+Perform the action described in .llm/actions/post-all-code-review.md.
+```
+
+Use this for final quality checks or when you need a holistic view of the implementation.
+
 ### TDD Workflow
 
 For strict test-driven development, use:
