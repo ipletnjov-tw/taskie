@@ -105,13 +105,32 @@ Figure out where you left off and continue from there: find the last changed tas
 
 Determine the next appropriate action based on the current state:
 
-- If the task is in-progress: Continue implementing the task. Follow the same process as the `continue-task` prompt.
+- **If the task is in-progress**: Continue implementing the task.
+  - Document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{current-task-id}.md`
+  - Update the status and git commit hash of the subtask(s)
+  - Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`
 
-- If the task is completed but pending review: Perform a code review. Follow the same process as the `code-review` prompt.
+- **If the task is completed but pending review**: Perform a code review.
+  - Be very critical, look for mistakes, inconsistencies, misunderstandings, shortcuts, negligence, overengineering and other cruft
+  - Don't let ANYTHING slip, write down even the most minor issues
+  - Review ALL code that was created, changed or deleted as part of the task, NOT just the latest fixes
+  - Double check ALL the must-run commands by running them and analyzing their results
+  - Document the results in `.llm/plans/{current-plan-dir}/task-{current-task-id}-review-{review-id}.md`
+  - Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`
 
-- If the task's latest review is positive: Start the next task. Follow the same process as the `next-task` prompt.
+- **If the task's latest review is positive**: Start the next task.
+  - Proceed to the next pending task in the implementation plan
+  - Implement ONLY ONE task, including ALL of the task's subtasks
+  - Run all must-run commands for EVERY subtask to verify completion
+  - Document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{next-task-id}.md`
+  - Update the status and git commit hash of the subtask(s)
+  - Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`
 
-- If the task's latest review is negative: Address review feedback. Follow the same process as the `post-code-review` prompt.
+- **If the task's latest review is negative**: Address review feedback.
+  - Fix all identified issues from the latest review file `.llm/plans/{current-plan-dir}/task-{current-task-id}-review-{latest-review-id}.md`
+  - Document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{current-task-id}.md`
+  - Update the status and git commit hash of the subtask(s)
+  - Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`
 
 Remember, you MUST follow the ground rules above at ALL times. Do NOT forget to push your changes to remote.
 
