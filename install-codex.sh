@@ -21,6 +21,18 @@ fi
 # Create target directory if it doesn't exist
 mkdir -p "$CODEX_PROMPTS_DIR"
 
+# Check if any taskie- prompts already exist
+if ls "$CODEX_PROMPTS_DIR"/taskie-*.md >/dev/null 2>&1; then
+    echo "Warning: Existing Taskie prompts found in $CODEX_PROMPTS_DIR"
+    echo "This will overwrite them."
+    read -p "Continue? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Installation cancelled."
+        exit 0
+    fi
+fi
+
 # Copy all markdown files
 echo "Copying prompts to $CODEX_PROMPTS_DIR..."
 cp -v "$SOURCE_DIR"/*.md "$CODEX_PROMPTS_DIR/"

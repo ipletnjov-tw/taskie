@@ -103,13 +103,15 @@ If you don't know what the `{current-plan-dir}` is, use git history to find out 
 
 Figure out where you left off and continue from there: find the last changed task(s) from the task list, check the subtasks and reviews for each task. You may also use git history for more information.
 
-If the task is in-progress, execute action `.llm/actions/continue-task.md`.
+Determine the next appropriate action based on the current state:
 
-If the task is completed but pending review, execute action `.llm/actions/code-review.md`.
+- If the task is in-progress: Continue implementing the task. Follow the same process as the `continue-task` prompt.
 
-If the task's latest review is positive, execute action `.llm/actions/next-task.md`.
+- If the task is completed but pending review: Perform a code review. Follow the same process as the `code-review` prompt.
 
-If the task's latest review is negative, execute action `.llm/actions/post-code-review.md`.
+- If the task's latest review is positive: Start the next task. Follow the same process as the `next-task` prompt.
+
+- If the task's latest review is negative: Address review feedback. Follow the same process as the `post-code-review` prompt.
 
 Remember, you MUST follow the ground rules above at ALL times. Do NOT forget to push your changes to remote.
 

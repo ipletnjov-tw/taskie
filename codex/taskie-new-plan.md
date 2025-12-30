@@ -106,6 +106,6 @@ The implementation plan file MUST contain the original prompt that was presented
 
 **DO NOT** add any timeline estimates (hours, days, weeks) to any part of the plan, task list, task files or subtasks. Also **DO NOT** add any dates or timestamps to any part of the plan or task list.
 
-Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+Remember, you MUST follow the ground rules above at ALL times. Do NOT forget to push your changes to remote.
 
 $ARGUMENTS

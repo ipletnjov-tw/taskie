@@ -101,17 +101,31 @@ Execute full task completion: Next Task → Code Review → Post-Code-Review →
 
 ## Phase 1: Next Task / Implementation
 
-Follow the instructions in the next-task prompt.
+Implement the next task following the standard task implementation process:
+- Proceed to the next pending task in the implementation plan
+- Implement ONLY ONE task, including ALL of its subtasks
+- Run all must-run commands for EVERY subtask to verify completion
+- Document progress and update subtask status and git commit hashes
+- Update task status in tasks.md
 
 ## Phase 2: Code Review
 
-Follow the instructions in the code-review prompt.
+Perform a thorough code review of the implementation:
+- Be very critical, look for mistakes, inconsistencies, misunderstandings, shortcuts, negligence, overengineering
+- Review ALL code that was created, changed or deleted as part of the task
+- Double check ALL must-run commands by running them and analyzing results
+- Document results in task-{task-id}-review-{review-id}.md
+- Update task status in tasks.md
 
 If no issues are identified, skip to Phase 4.
 
 ## Phase 3: Post-Code-Review
 
-Follow the instructions in the post-code-review prompt.
+Address the issues surfaced by the code review:
+- Fix all identified issues from the latest review file
+- Document progress with a short summary in the task file
+- Update subtask status and git commit hashes
+- Update task status in tasks.md
 
 You MUST address ALL issues. Return to Phase 2 after addressing issues. Maximum of 3 code-review <-> post-code-review cycles per task.
 If issues remain after 3 cycles, pause and request human input.
