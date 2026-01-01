@@ -3,9 +3,7 @@ description: Critically review implemented code
 argument-hint: [additional instructions]
 ---
 
-# Ground Rules
-
-Read and follow the ground rules defined in `~/.codex/prompts/taskie-ground-rules.md`
+**IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
 
 # Perform Task Code Review
@@ -16,6 +14,6 @@ Double check ALL the must-run commands by running them and analyzing their resul
 
 Document the results of your review in `.llm/plans/{current-plan-dir}/task-{current-task-id}-review-{review-id}.md` and update the task status in `.llm/plans/{current-plan-dir}/tasks.md` too. If you don't know what the `{current-plan-dir}` or `{current-task-id}` are, use git history to find out which plan and task was modified most recently.
 
-Remember, you MUST follow the ground rules above at ALL times. Do NOT forget to push your changes to remote.
+Do NOT forget to push your changes to remote.
 
 $ARGUMENTS

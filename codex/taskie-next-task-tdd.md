@@ -3,9 +3,7 @@ description: Implement next task using strict TDD (red-green-refactor)
 argument-hint: [additional instructions]
 ---
 
-# Ground Rules
-
-Read and follow the ground rules defined in `~/.codex/prompts/taskie-ground-rules.md`
+**IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
 
 # Start Next Task Implementation (TDD)
@@ -28,6 +26,6 @@ After you're done, document your progress with a short summary in `.llm/plans/{c
 
 If you don't know what the `{current-plan-dir}` or `{current-task-id}` are, use git history to find out which plan and task was modified most recently.
 
-Remember, you MUST follow the ground rules above at ALL times. Do NOT forget to push your changes to remote.
+Do NOT forget to push your changes to remote.
 
 $ARGUMENTS

@@ -3,9 +3,7 @@ description: Review and critique the current plan
 argument-hint: [additional instructions]
 ---
 
-# Ground Rules
-
-Read and follow the ground rules defined in `~/.codex/prompts/taskie-ground-rules.md`
+**IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
 
 # Perform Implementation Plan Review
@@ -16,6 +14,6 @@ If you don't know what the `{current-plan-dir}` is, use git history to find out 
 
 Document the results of your review in `.llm/plans/{current-plan-dir}/plan-{review-id}.md`.
 
-Remember, you MUST follow the ground rules above at ALL times. Do NOT forget to push your changes to remote.
+Do NOT forget to push your changes to remote.
 
 $ARGUMENTS

@@ -36,6 +36,21 @@ Run the installation script from the Taskie directory:
 
 This copies all prompts to `~/.codex/prompts/` with `taskie-` prefix. Restart Codex CLI or start a new session to load the prompts.
 
+#### Codex CLI Technical Details
+
+The Codex installation includes 15 files:
+- **14 user-invocable prompts** (`taskie-new-plan.md`, `taskie-continue-plan.md`, etc.)
+- **1 shared ground rules file** (`taskie-ground-rules.md`)
+
+All prompts reference `~/.codex/prompts/taskie-ground-rules.md` to load shared ground rules at runtime. This design:
+- **Maintains DRY**: Ground rules exist in one place
+- **Enables updates**: Change ground rules once, affects all prompts
+- **Reduces file size**: Each prompt is ~90 lines smaller
+
+**Note:** Task-specific workflow instructions (like the phases in `complete-task` prompts) remain inlined since they're unique to those workflows, not cross-cutting concerns.
+
+**CODEX_HOME Limitation:** If using a custom `CODEX_HOME` environment variable, you must manually edit all prompt files to update the ground rules path from `~/.codex/prompts/taskie-ground-rules.md` to your custom location.
+
 ## Available Commands
 
 Once installed, you'll have access to these slash commands:

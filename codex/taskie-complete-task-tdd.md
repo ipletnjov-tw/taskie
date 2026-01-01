@@ -3,9 +3,7 @@ description: TDD implementation with automatic review cycle
 argument-hint: [additional instructions]
 ---
 
-# Ground Rules
-
-Read and follow the ground rules defined in `~/.codex/prompts/taskie-ground-rules.md`
+**IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
 
 # Complete Task with TDD and Review Cycle
@@ -57,6 +55,6 @@ Update subtask status to "completed" and task status to "done", then push to rem
 
 If you don't know the `{current-plan-dir}`, use git history to find the most recently modified plan.
 
-Remember, you MUST follow the ground rules above at ALL times. Do NOT forget to push your changes to remote.
+Do NOT forget to push your changes to remote.
 
 $ARGUMENTS

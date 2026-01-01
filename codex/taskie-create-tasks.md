@@ -3,9 +3,7 @@ description: Generate tasks from the current plan
 argument-hint: [additional instructions]
 ---
 
-# Ground Rules
-
-Read and follow the ground rules defined in `~/.codex/prompts/taskie-ground-rules.md`
+**IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
 
 # Create Task List and Task Files

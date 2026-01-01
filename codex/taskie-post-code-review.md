@@ -3,9 +3,7 @@ description: Apply code review feedback
 argument-hint: [additional instructions]
 ---
 
-# Ground Rules
-
-Read and follow the ground rules defined in `~/.codex/prompts/taskie-ground-rules.md`
+**IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
 
 # Implement Post-Review Fixes
@@ -16,6 +14,6 @@ If you don't know what the `{current-plan-dir}`, `{current-task-id}` or `{latest
 
 After you're done with your changes, document your progress with a short summary in `.llm/plans/{current-plan-dir}/task-{next-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`.
 
-Remember, you MUST follow the ground rules above at ALL times. Do NOT forget to push your changes to remote.
+Do NOT forget to push your changes to remote.
 
 $ARGUMENTS
