@@ -66,6 +66,7 @@ Once installed, you'll have access to these slash commands:
 
 ### Task Management Commands
 - `/taskie:create-tasks` - Generate tasks from the current plan
+- `/taskie:add-task` - Add a new task to an existing implementation plan
 - `/taskie:tasks-review` - Review the task list and task files
 - `/taskie:post-tasks-review` - Address task review comments
 - `/taskie:next-task` - Start implementing the next task
@@ -74,6 +75,8 @@ Once installed, you'll have access to these slash commands:
 ### Code Review Commands
 - `/taskie:code-review` - Critically review implemented code
 - `/taskie:post-code-review` - Apply code review feedback
+- `/taskie:all-code-review` - Review ALL code across ALL tasks in the plan
+- `/taskie:post-all-code-review` - Apply complete implementation review feedback
 
 ### TDD Commands
 - `/taskie:next-task-tdd` - Implement next task using strict TDD (red-green-refactor)

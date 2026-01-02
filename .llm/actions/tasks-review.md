@@ -4,6 +4,6 @@ Perform a thorough review of the proposed task list defined in `.llm/plans/{curr
 
 If you don't know what the `{current-plan-dir}` is, use git history to find out which plan was modified most recently.
 
-Document the results of your review in `.llm/plans/{current-plan-dir}/tasks-{review-id}.md`.
+Document the results of your review in `.llm/plans/{current-plan-dir}/tasks-review-{review-id}.md`.
 
 Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.

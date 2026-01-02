@@ -40,6 +40,15 @@ After the review is written, prompt `Perform the action described in .llm/action
 
 Repeat the review & post-review cycle until the tasks are in good shape. 🔁
 
+#### Add a task to an existing plan
+
+If you need to add a new task to an in-progress implementation plan:
+```
+Perform the action described in .llm/actions/add-task.md.
+```
+
+This will add a new task to the existing `tasks.md` table and create the corresponding `task-{id}.md` file.
+
 ### Let's write some code! ⌨️
 
 After you're done iterating on the plan, design and tasks, we can move on to the meat of the work:
@@ -59,6 +68,20 @@ The LLM will very critically scrutinize its own implementation. You will then wa
 Note: This does **not** mean that you get to skip reviewing the code yourself. You need to review **everything**, every step of the way.
 
 Once the first task is done, move to the next one using `Perform the action described in .llm/actions/next-task.md.`. Repeat until every task is done! 🚀
+
+### Complete Implementation Review
+
+After completing all tasks (or at any point during implementation), you can review ALL code across the entire plan:
+```
+Perform the action described in .llm/actions/all-code-review.md.
+```
+
+This performs a comprehensive review of the entire implementation against the original plan requirements. Then apply the feedback:
+```
+Perform the action described in .llm/actions/post-all-code-review.md.
+```
+
+Use this for final quality checks or when you need a holistic view of the implementation.
 
 ### TDD Workflow
 
