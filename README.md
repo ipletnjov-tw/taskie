@@ -38,8 +38,8 @@ This copies all prompts to `~/.codex/prompts/` with `taskie-` prefix. Restart Co
 
 #### Codex CLI Technical Details
 
-The Codex installation includes 15 files:
-- **14 user-invocable prompts** (`taskie-new-plan.md`, `taskie-continue-plan.md`, etc.)
+The Codex installation includes 18 files:
+- **17 user-invocable prompts** (`taskie-new-plan.md`, `taskie-continue-plan.md`, etc.)
 - **1 shared ground rules file** (`taskie-ground-rules.md`)
 
 All prompts reference `~/.codex/prompts/taskie-ground-rules.md` to load shared ground rules at runtime. This design:
