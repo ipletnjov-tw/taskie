@@ -28,7 +28,7 @@ Each step of the plan will consist of multiple iterations, depending on the resu
 
 Each plan will have the same basic directory structure:
 ```
-.llm/
+.taskie/
 ├── plans/
 │   ├── {current-plan-id}/
 │   │   ├── plan.md                      # Implementation Plan Document

@@ -9,9 +9,9 @@ argument-hint: [additional instructions]
 
 You will need to create a new implementation plan according to the process, format and conventions defined in the ground rules.
 
-The implementation plan MUST have its own subdirectory under `.llm/plans`.
+The implementation plan MUST have its own subdirectory under `.taskie/plans`.
 
-The implementation plan MUST be written down into a Markdown file in the `.llm/plans/{current-plan-dir}`. The file MUST be titled `plan.md`.
+The implementation plan MUST be written down into a Markdown file in the `.taskie/plans/{current-plan-dir}`. The file MUST be titled `plan.md`.
 
 The implementation plan file MUST contain the original prompt that was presented to you.
 

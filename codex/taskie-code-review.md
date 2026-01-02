@@ -12,7 +12,7 @@ Perform a thorough review of the current task implementation and latest changes.
 
 Double check ALL the must-run commands by running them and analyzing their results.
 
-Document the results of your review in `.llm/plans/{current-plan-dir}/task-{current-task-id}-review-{review-id}.md` and update the task status in `.llm/plans/{current-plan-dir}/tasks.md` too. If you don't know what the `{current-plan-dir}` or `{current-task-id}` are, use git history to find out which plan and task was modified most recently.
+Document the results of your review in `.taskie/plans/{current-plan-dir}/task-{current-task-id}-review-{review-id}.md` and update the task status in `.taskie/plans/{current-plan-dir}/tasks.md` too. If you don't know what the `{current-plan-dir}` or `{current-task-id}` are, use git history to find out which plan and task was modified most recently.
 
 Do NOT forget to push your changes to remote.
 

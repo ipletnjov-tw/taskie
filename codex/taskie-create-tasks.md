@@ -8,7 +8,7 @@ argument-hint: [additional instructions]
 
 # Create Task List and Task Files
 
-Compile a step-by-step table of tasks into a separate Markdown file named `.llm/plans/{current-plan-dir}/tasks.md`. Each task in the table represents a high-level goal that we want to achieve according to the `.llm/plans/{current-plan-dir}/plan.md`.
+Compile a step-by-step table of tasks into a separate Markdown file named `.taskie/plans/{current-plan-dir}/tasks.md`. Each task in the table represents a high-level goal that we want to achieve according to the `.taskie/plans/{current-plan-dir}/plan.md`.
 
 If you don't know what the `{current-plan-dir}` is, use git history to find out which plan was modified most recently.
 
@@ -21,7 +21,7 @@ Each task in the table MUST have the following fields:
 
 The `tasks.md` file MUST NOT contain anything other than the tasks table. You MUST add a disclaimer below the table that forbids adding anything else to the file.
 
-For each task, you MUST create a separate Markdown file named `.llm/plans/{current-plan-dir}/task-{task-id}.md`. For each task, you MUST create a list of subtasks into the task file. Each subtask must have a separate section in the task file.
+For each task, you MUST create a separate Markdown file named `.taskie/plans/{current-plan-dir}/task-{task-id}.md`. For each task, you MUST create a list of subtasks into the task file. Each subtask must have a separate section in the task file.
 
 Each subtask MUST have the following fields:
 ```md
