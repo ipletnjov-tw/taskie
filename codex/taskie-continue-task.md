@@ -5,7 +5,6 @@ argument-hint: [additional instructions]
 
 **IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
-
 # Continue Task Implementation
 
 You will need to continue working on a task in the implementation plan.
@@ -14,6 +13,6 @@ After you're done implementing it, document your progress with a short summary i
 
 If you don't know what the `{current-plan-dir}` or `{current-task-id}` are, use git history to find out which plan and task was modified most recently.
 
-Do NOT forget to push your changes to remote.
+Remember, you MUST follow the ground rules at ALL times. Do NOT forget to push your changes to remote.
 
 $ARGUMENTS

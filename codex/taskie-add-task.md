@@ -5,7 +5,6 @@ argument-hint: [additional instructions]
 
 **IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
-
 # Add New Task to Implementation Plan
 
 Add a new task to the existing task list in `.taskie/plans/{current-plan-dir}/tasks.md`. The new task represents a high-level goal that extends the current implementation plan.
@@ -35,6 +34,6 @@ Each subtask MUST have the following fields:
 - **Acceptance criteria**: (Specific, testable conditions that define "done")
 ```
 
-Do NOT forget to push your changes to remote.
+Remember, you MUST follow the ground rules at ALL times. Do NOT forget to push your changes to remote.
 
 $ARGUMENTS

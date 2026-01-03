@@ -5,7 +5,6 @@ argument-hint: [additional instructions]
 
 **IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
-
 # Implement Post-Tasks-Review Fixes
 
 Address the issues surfaced by the latest tasks review in `.taskie/plans/{current-plan-dir}/tasks-review-{latest-review-id}.md`
@@ -14,6 +13,6 @@ If you don't know what the `{current-plan-dir}` or `{latest-review-id}` are, use
 
 After you're done with your changes, update the task files and task list, and document your changes.
 
-Do NOT forget to push your changes to remote.
+Remember, you MUST follow the ground rules at ALL times. Do NOT forget to push your changes to remote.
 
 $ARGUMENTS

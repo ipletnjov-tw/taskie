@@ -5,7 +5,6 @@ argument-hint: [additional instructions]
 
 **IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
-
 # Create Task List and Task Files
 
 Compile a step-by-step table of tasks into a separate Markdown file named `.taskie/plans/{current-plan-dir}/tasks.md`. Each task in the table represents a high-level goal that we want to achieve according to the `.taskie/plans/{current-plan-dir}/plan.md`.

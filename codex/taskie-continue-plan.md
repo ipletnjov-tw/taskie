@@ -5,7 +5,6 @@ argument-hint: [additional instructions]
 
 **IMPORTANT:** Before proceeding, read and internalize all ground rules from `~/.codex/prompts/taskie-ground-rules.md`. You MUST follow these ground rules at ALL times throughout this task.
 
-
 # Continue Existing Implementation Plan
 
 You will need to continue an existing implementation plan. The plan, task list, design document and task files are in the `.taskie/plans/{current-plan-dir}` directory.
@@ -43,6 +42,6 @@ Determine the next appropriate action based on the current state:
   - Update the status and git commit hash of the subtask(s)
   - Update the task status in `.taskie/plans/{current-plan-dir}/tasks.md`
 
-Do NOT forget to push your changes to remote.
+Remember, you MUST follow the ground rules at ALL times. Do NOT forget to push your changes to remote.
 
 $ARGUMENTS

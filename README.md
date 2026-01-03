@@ -24,7 +24,7 @@ Heavily inspired by [Taskmaster](https://github.com/eyaltoledano/claude-task-mas
 /plugin install taskie@taskie
 ```
 
-Latest version: **v2.1.0**
+Latest version: **v2.2.0**
 
 ### For OpenAI Codex CLI
 
@@ -53,38 +53,40 @@ All prompts reference `~/.codex/prompts/taskie-ground-rules.md` to load shared g
 
 ## Available Commands
 
-Once installed, you'll have access to these slash commands:
+### Command Syntax by Tool
 
-**Claude Code:** `/taskie:command-name`
-**Codex CLI:** `/prompts:taskie-command-name`
+| Tool | Syntax Pattern | Example |
+|------|----------------|---------|
+| **Claude Code** | `/taskie:command-name` | `/taskie:new-plan` |
+| **Codex CLI** | `/prompts:taskie-command-name` | `/prompts:taskie-new-plan` |
 
 ### Planning Commands
-- `/taskie:new-plan` - Create a new implementation plan
-- `/taskie:continue-plan` - Continue an existing plan from git history
-- `/taskie:plan-review` - Review and critique the current plan
-- `/taskie:post-plan-review` - Address plan review comments
+- `new-plan` - Create a new implementation plan
+- `continue-plan` - Continue an existing plan from git history
+- `plan-review` - Review and critique the current plan
+- `post-plan-review` - Address plan review comments
 
 ### Task Management Commands
-- `/taskie:create-tasks` - Generate tasks from the current plan
-- `/taskie:add-task` - Add a new task to an existing implementation plan
-- `/taskie:tasks-review` - Review the task list and task files
-- `/taskie:post-tasks-review` - Address task review comments
-- `/taskie:next-task` - Start implementing the next task
-- `/taskie:continue-task` - Continue working on the current task
+- `create-tasks` - Generate tasks from the current plan
+- `add-task` - Add a new task to an existing implementation plan
+- `tasks-review` - Review the task list and task files
+- `post-tasks-review` - Address task review comments
+- `next-task` - Start implementing the next task
+- `continue-task` - Continue working on the current task
 
 ### Code Review Commands
-- `/taskie:code-review` - Critically review implemented code
-- `/taskie:post-code-review` - Apply code review feedback
-- `/taskie:all-code-review` - Review ALL code across ALL tasks in the plan
-- `/taskie:post-all-code-review` - Apply complete implementation review feedback
+- `code-review` - Critically review implemented code
+- `post-code-review` - Apply code review feedback
+- `all-code-review` - Review ALL code across ALL tasks in the plan
+- `post-all-code-review` - Apply complete implementation review feedback
 
 ### TDD Commands
-- `/taskie:next-task-tdd` - Implement next task using strict TDD (red-green-refactor)
-- `/taskie:complete-task-tdd` - TDD implementation with automatic review cycle
+- `next-task-tdd` - Implement next task using strict TDD (red-green-refactor)
+- `complete-task-tdd` - TDD implementation with automatic review cycle
 
 ### Unified Workflow Commands
-- `/taskie:complete-task` - Implement + review + fix in one command
-- `/taskie:complete-task-tdd` - TDD variant of complete-task
+- `complete-task` - Implement + review + fix in one command
+- `complete-task-tdd` - TDD variant of complete-task
 
 ## Usage
 
