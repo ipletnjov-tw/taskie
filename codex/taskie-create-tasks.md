@@ -36,4 +36,6 @@ Each subtask MUST have the following fields:
 - **Acceptance criteria**: (Specific, testable conditions that define "done")
 ```
 
+Remember, you MUST follow the ground rules at ALL times. Do NOT forget to push your changes to remote.
+
 $ARGUMENTS
