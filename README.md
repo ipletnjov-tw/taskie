@@ -4,57 +4,93 @@ This is a simple framework of reusable prompts that makes it easy to use LLMs to
 
 Works well with **Anthropic Claude Sonnet** 3.7, 4.0 and 4.5. Tested using the Cursor IDE (VSCode), Cursor Background Agents, Claude Code CLI and Claude Code Web.
 
-Packaged and distributed as a Claude Code plugin. For usage outside of Claude Code, please refer to [PROMPTS.md](./PROMPTS.md).
+Packaged and distributed as a Claude Code plugin. Also works with OpenAI Codex CLI and other LLM tools. For usage outside of Claude Code and Codex CLI, please refer to [PROMPTS.md](./PROMPTS.md).
 
 Heavily inspired by [Taskmaster](https://github.com/eyaltoledano/claude-task-master) and [wbern/claude-instructions](https://github.com/wbern/claude-instructions).
 
 ## Installation
 
-### Add the Taskie marketplace
+### For Claude Code
+
+#### Add the Taskie marketplace
 
 ```bash
 /plugin marketplace add ipletnjov-tw/taskie
 ```
 
-### Install the plugin
+#### Install the plugin
 
 ```bash
 /plugin install taskie@taskie
 ```
 
+Latest version: **v2.2.0**
+
+### For OpenAI Codex CLI
+
+Run the installation script from the Taskie directory:
+
+```bash
+./install-codex.sh
+```
+
+This copies all prompts to `~/.codex/prompts/` with `taskie-` prefix. Restart Codex CLI or start a new session to load the prompts.
+
+#### Codex CLI Technical Details
+
+The Codex installation includes 18 files:
+- **17 user-invocable prompts** (`taskie-new-plan.md`, `taskie-continue-plan.md`, etc.)
+- **1 shared ground rules file** (`taskie-ground-rules.md`)
+
+All prompts reference `~/.codex/prompts/taskie-ground-rules.md` to load shared ground rules at runtime. This design:
+- **Maintains DRY**: Ground rules exist in one place
+- **Enables updates**: Change ground rules once, affects all prompts
+- **Reduces file size**: Each prompt is ~90 lines smaller
+
+**Note:** Task-specific workflow instructions (like the phases in `complete-task` prompts) remain inlined since they're unique to those workflows, not cross-cutting concerns.
+
+**CODEX_HOME Limitation:** If using a custom `CODEX_HOME` environment variable, you must manually edit all prompt files to update the ground rules path from `~/.codex/prompts/taskie-ground-rules.md` to your custom location.
+
 ## Available Commands
 
-Once installed, you'll have access to these slash commands:
+### Command Syntax by Tool
+
+| Tool | Syntax Pattern | Example |
+|------|----------------|---------|
+| **Claude Code** | `/taskie:command-name` | `/taskie:new-plan` |
+| **Codex CLI** | `/prompts:taskie-command-name` | `/prompts:taskie-new-plan` |
 
 ### Planning Commands
-- `/taskie:new-plan` - Create a new implementation plan
-- `/taskie:continue-plan` - Continue an existing plan from git history
-- `/taskie:plan-review` - Review and critique the current plan
-- `/taskie:post-plan-review` - Address plan review comments
+- `new-plan` - Create a new implementation plan
+- `continue-plan` - Continue an existing plan from git history
+- `plan-review` - Review and critique the current plan
+- `post-plan-review` - Address plan review comments
 
 ### Task Management Commands
-- `/taskie:create-tasks` - Generate tasks from the current plan
-- `/taskie:add-task` - Add a new task to an existing implementation plan
-- `/taskie:tasks-review` - Review the task list and task files
-- `/taskie:post-tasks-review` - Address task review comments
-- `/taskie:next-task` - Start implementing the next task
-- `/taskie:continue-task` - Continue working on the current task
+- `create-tasks` - Generate tasks from the current plan
+- `add-task` - Add a new task to an existing implementation plan
+- `tasks-review` - Review the task list and task files
+- `post-tasks-review` - Address task review comments
+- `next-task` - Start implementing the next task
+- `continue-task` - Continue working on the current task
 
 ### Code Review Commands
-- `/taskie:code-review` - Critically review implemented code
-- `/taskie:post-code-review` - Apply code review feedback
-- `/taskie:all-code-review` - Review ALL code across ALL tasks in the plan
-- `/taskie:post-all-code-review` - Apply complete implementation review feedback
+- `code-review` - Critically review implemented code
+- `post-code-review` - Apply code review feedback
+- `all-code-review` - Review ALL code across ALL tasks in the plan
+- `post-all-code-review` - Apply complete implementation review feedback
 
 ### TDD Commands
-- `/taskie:next-task-tdd` - Implement next task using strict TDD (red-green-refactor)
-- `/taskie:complete-task-tdd` - TDD implementation with automatic review cycle
+- `next-task-tdd` - Implement next task using strict TDD (red-green-refactor)
+- `complete-task-tdd` - TDD implementation with automatic review cycle
 
 ### Unified Workflow Commands
-- `/taskie:complete-task` - Implement + review + fix in one command
-- `/taskie:complete-task-tdd` - TDD variant of complete-task
+- `complete-task` - Implement + review + fix in one command
+- `complete-task-tdd` - TDD variant of complete-task
 
 ## Usage
+
+### Claude Code
 
 All commands support appending additional instructions. Most of the time, your prompts will look **exactly** like this:
 
@@ -67,6 +103,22 @@ Or with additional context:
 ```bash
 /taskie:command-name Additional instructions here
 ```
+
+### Codex CLI
+
+For Codex CLI, use the `/prompts:taskie-` prefix:
+
+```bash
+/prompts:taskie-command-name
+```
+
+Or with additional instructions:
+
+```bash
+/prompts:taskie-command-name Additional instructions here
+```
+
+The workflow is identical to Claude Code. Examples below use Claude Code syntax; for Codex CLI, replace `/taskie:` with `/prompts:taskie-`.
 
 ### Kick off a new implementation plan
 
