@@ -4,8 +4,21 @@
 
 set -euo pipefail
 
+# Check for required dependencies
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required but not installed. Install it with: apt-get install jq" >&2
+    exit 2
+fi
+
 # Read hook input from stdin
 EVENT=$(cat)
+
+# Validate JSON input
+if ! echo "$EVENT" | jq empty 2>/dev/null; then
+    echo "Error: Invalid JSON input from hook event" >&2
+    exit 2
+fi
+
 STOP_HOOK_ACTIVE=$(echo "$EVENT" | jq -r '.stop_hook_active // false')
 
 # Prevent infinite loops - always approve if already in continuation
@@ -16,7 +29,12 @@ fi
 
 # Get project directory
 PROJECT_DIR=$(echo "$EVENT" | jq -r '.cwd // "."')
-cd "$PROJECT_DIR"
+
+# Change to project directory with error handling
+if ! cd "$PROJECT_DIR" 2>/dev/null; then
+    echo "Error: Cannot change to project directory: $PROJECT_DIR" >&2
+    exit 2
+fi
 
 # Check if .taskie directory exists (skip validation if not using Taskie)
 if [ ! -d ".taskie/plans" ]; then
