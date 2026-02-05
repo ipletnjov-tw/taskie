@@ -5,7 +5,8 @@
       "hooks": [{
         "type": "command",
         "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/validate-ground-rules.sh",
-        "timeout": 30
+        "timeout": 30,
+        "statusMessage": "Validating plan structure..."
       }]
     }]
   }

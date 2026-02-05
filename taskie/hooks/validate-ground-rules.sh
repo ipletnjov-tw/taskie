@@ -10,7 +10,7 @@ STOP_HOOK_ACTIVE=$(echo "$EVENT" | jq -r '.stop_hook_active // false')
 
 # Prevent infinite loops - always approve if already in continuation
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
-    echo '{"decision": "approve"}'
+    echo '{"suppressOutput": true}'
     exit 0
 fi
 
@@ -20,7 +20,7 @@ cd "$PROJECT_DIR"
 
 # Check if .taskie directory exists (skip validation if not using Taskie)
 if [ ! -d ".taskie/plans" ]; then
-    echo '{"decision": "approve"}'
+    echo '{"suppressOutput": true}'
     exit 0
 fi
 
@@ -135,20 +135,20 @@ RECENT_PLAN=$(find .taskie/plans -mindepth 2 -maxdepth 2 -type f -name "*.md" -p
 
 # If no plan files found, approve
 if [ -z "$RECENT_PLAN" ]; then
-    echo '{"decision": "approve"}'
+    echo '{"suppressOutput": true}'
     exit 0
 fi
 
 # Validate only the most recently modified plan
+PLAN_NAME=$(basename "$RECENT_PLAN")
 set +e
 PLAN_ERROR=$(validate_plan_structure "$RECENT_PLAN" 2>&1)
 PLAN_RESULT=$?
 set -e
 
 if [ $PLAN_RESULT -eq 0 ]; then
-    echo '{"decision": "approve"}'
+    echo "{\"systemMessage\": \"Plan '$PLAN_NAME' structure validated successfully\", \"suppressOutput\": true}"
 else
-    PLAN_NAME=$(basename "$RECENT_PLAN")
     jq -n --arg reason "Plan '$PLAN_NAME': $PLAN_ERROR" '{
         "decision": "block",
         "reason": $reason
