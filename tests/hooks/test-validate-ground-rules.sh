@@ -1,15 +1,40 @@
 #!/bin/bash
-# Test script for validate-ground-rules.sh hook
+# Test Suite for validate-ground-rules.sh Hook
+#
+# Usage:
+#   ./test-validate-ground-rules.sh              # Run all tests
+#   ./test-validate-ground-rules.sh --verbose    # Run with detailed output
+#
+# Exit codes:
+#   0 - All tests passed
+#   1 - One or more tests failed
 
-HOOK_SCRIPT="taskie/hooks/validate-ground-rules.sh"
+# Determine script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+HOOK_SCRIPT="$PROJECT_ROOT/taskie/hooks/validate-ground-rules.sh"
+
+# Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo "================================"
-echo "Testing Claude Code Hook"
-echo "================================"
+# Verbose mode
+VERBOSE="${1:-}"
+
+# Verify hook script exists
+if [[ ! -f "$HOOK_SCRIPT" ]]; then
+    echo -e "${RED}Error: Hook script not found at $HOOK_SCRIPT${NC}"
+    exit 1
+fi
+
+echo -e "${BLUE}================================${NC}"
+echo -e "${BLUE}Testing Claude Code Hook${NC}"
+echo -e "${BLUE}================================${NC}"
+echo ""
+echo "Hook: $HOOK_SCRIPT"
 echo ""
 
 # Test 1: Check if jq is installed
