@@ -55,7 +55,80 @@ if [ -z "$RECENT_PLAN" ]; then
     exit 0
 fi
 
-# TODO: Add auto-review logic here (Task 3)
+# Step 5: Auto-review logic
+STATE_FILE="$RECENT_PLAN/state.json"
+PLAN_ID=$(basename "$RECENT_PLAN")
+
+# Step 5a: Read state.json if it exists
+if [ -f "$STATE_FILE" ]; then
+    # Validate JSON syntax
+    if ! jq empty "$STATE_FILE" 2>/dev/null; then
+        echo "Warning: state.json contains invalid JSON, falling back to validation" >&2
+    else
+        # Read all state fields with default operators for forward compatibility
+        MAX_REVIEWS=$(jq -r '(.max_reviews // 8)' "$STATE_FILE" 2>/dev/null)
+        CURRENT_TASK=$(jq -r '(.current_task // null)' "$STATE_FILE" 2>/dev/null)
+        PHASE=$(jq -r '(.phase // "")' "$STATE_FILE" 2>/dev/null)
+        PHASE_ITERATION=$(jq -r '(.phase_iteration // 0)' "$STATE_FILE" 2>/dev/null)
+        NEXT_PHASE=$(jq -r '(.next_phase // "")' "$STATE_FILE" 2>/dev/null)
+        REVIEW_MODEL=$(jq -r '(.review_model // "opus")' "$STATE_FILE" 2>/dev/null)
+        CONSECUTIVE_CLEAN=$(jq -r '(.consecutive_clean // 0)' "$STATE_FILE" 2>/dev/null)
+        TDD=$(jq -r '(.tdd // false)' "$STATE_FILE" 2>/dev/null)
+
+        # Check if next_phase is a review phase
+        if [[ "$NEXT_PHASE" =~ ^(plan-review|tasks-review|code-review|all-code-review)$ ]]; then
+            # Extract review type from next_phase
+            REVIEW_TYPE="$NEXT_PHASE"
+
+            # Step 5a: Check max_reviews == 0 (skip reviews)
+            if [ "$MAX_REVIEWS" -eq 0 ]; then
+                # Determine advance target based on review type
+                case "$REVIEW_TYPE" in
+                    plan-review)
+                        ADVANCE_TARGET="create-tasks"
+                        ;;
+                    tasks-review)
+                        if [ "$TDD" = "true" ]; then
+                            ADVANCE_TARGET="complete-task-tdd"
+                        else
+                            ADVANCE_TARGET="complete-task"
+                        fi
+                        ;;
+                    code-review)
+                        # Check if more tasks remain
+                        TASKS_REMAIN=$(grep '^|' "$RECENT_PLAN/tasks.md" 2>/dev/null | tail -n +3 | awk -F'|' -v cur="$CURRENT_TASK" '{gsub(/[[:space:]]/, "", $2); if ($2 != cur) print $3}' | grep -i 'pending' | wc -l)
+                        if [ "$TASKS_REMAIN" -gt 0 ]; then
+                            if [ "$TDD" = "true" ]; then
+                                ADVANCE_TARGET="complete-task-tdd"
+                            else
+                                ADVANCE_TARGET="complete-task"
+                            fi
+                        else
+                            ADVANCE_TARGET="all-code-review"
+                        fi
+                        ;;
+                    all-code-review)
+                        ADVANCE_TARGET="complete"
+                        ;;
+                esac
+
+                # Write state atomically with phase set to review type and next_phase to advance target
+                TEMP_STATE=$(mktemp)
+                jq --arg phase "$REVIEW_TYPE" \
+                   --arg next_phase "$ADVANCE_TARGET" \
+                   --argjson phase_iteration 0 \
+                   '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration' \
+                   "$STATE_FILE" > "$TEMP_STATE"
+                mv "$TEMP_STATE" "$STATE_FILE"
+
+                echo "{\"systemMessage\": \"Reviews disabled (max_reviews=0). Auto-advanced to $ADVANCE_TARGET. Run /taskie:continue-plan to proceed.\", \"suppressOutput\": true}"
+                exit 0
+            fi
+
+            # TODO: Implement steps 5b-h (CLI invocation, verdict extraction, etc.) in subsequent subtasks
+        fi
+    fi
+fi
 
 # Validation function - collects ALL violations
 validate_plan_structure() {
