@@ -122,7 +122,7 @@ The "standalone = null" rule only applies to implementation and review commands 
 
 **Skipping all-code-review for small plans**: For 1-2 task plans where each task was already thoroughly reviewed, the all-code-review cycle may be redundant. To skip it, the user can edit `state.json` after the last task's code review completes and set `phase: "complete"`, `next_phase: null`. This is left as a manual choice rather than automatic to avoid silently skipping reviews for plans that happen to be small but still benefit from cross-task review.
 
-**How the hook detects "clean review":** The CLI prompt instructs the reviewer to include a structured verdict at the end of its review: exactly `VERDICT: PASS` (no issues found) or `VERDICT: FAIL` (issues found). The hook reads the review file and checks for `VERDICT: PASS` — a simple, unambiguous grep. This is more reliable than keyword matching (which misfires on phrases like "No issues found" or "No changes needed"). The hook tracks the consecutive clean review count in `state.json` via a `consecutive_clean` field (see schema). When `consecutive_clean >= 2`, the hook advances to the next phase instead of blocking for another post-review.
+**How the hook detects "clean review":** The CLI is invoked with `--output-format json` and `--json-schema` to return a structured verdict. The schema constrains the output to `{"verdict": "PASS"}` or `{"verdict": "FAIL"}`. The hook extracts the verdict from stdout via `jq -r '.result.verdict'` — no grepping of markdown files, no fragile text matching. The review content itself is still written to disk by the CLI's Write tool (the structured output is separate from the review file). The hook tracks the consecutive clean review count in `state.json` via a `consecutive_clean` field (see schema). When `consecutive_clean >= 2`, the hook advances to the next phase instead of blocking for another post-review.
 
 ## Hook Design
 
@@ -164,7 +164,7 @@ The unified hook follows this logic:
    c. Check if incremented `phase_iteration` <= `max_reviews` — if NOT, skip to step 6 (limit reached, hard stop)
    d. Invoke `claude` CLI to perform the review (see CLI invocation below). The review file is named `*-review-${phase_iteration}.md`.
    e. Verify the review file was written to disk. If not (CLI failure), log warning and skip to step 6.
-   f. Determine if the review is "clean" (no issues found). The hook reads the review file and checks for the structured verdict line: `grep -q "^VERDICT: PASS$"`. If found, the review is clean — increment `consecutive_clean`. If not found (either `VERDICT: FAIL` or no verdict line), the review has issues — reset `consecutive_clean` to 0. The CLI prompt (see below) instructs the reviewer to always include exactly one of `VERDICT: PASS` or `VERDICT: FAIL` as the last line of the review.
+   f. Determine if the review is "clean" (no issues found). The hook extracts the verdict from the CLI's structured JSON output (captured in step 5d): `VERDICT=$(echo "$CLI_OUTPUT" | jq -r '.result.verdict')`. If `VERDICT` is `"PASS"`, the review is clean — increment `consecutive_clean`. If `"FAIL"` or any other value (including parse failure), the review has issues — reset `consecutive_clean` to 0.
    g. If `consecutive_clean >= 2`: auto-advance. Update `state.json` atomically with ALL modified fields: set `phase` to the review phase, `next_phase` to the advance target, `phase_iteration` (incremented), `review_model` (toggled), `consecutive_clean` (incremented). The advance target mapping is: `"create-tasks"` for plan review, `"next-task"` for tasks review, `"complete"` for all-code-review. **For code review:** the hook checks `tasks.md` for remaining pending tasks. If tasks remain, `next_phase: "next-task"`. If no tasks remain, `next_phase: "all-code-review"` with `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0` (entering a new review cycle). This check is done by the hook (not the action file) because the hook is programmatic shell code where `grep`/`awk` reliably determines remaining tasks, whereas the action file is a prompt where detection is fragile. Then **approve** the stop (no block).
    h. If `consecutive_clean < 2`: Update `state.json` atomically (see Atomic State Updates below): set `phase` to the review phase, write the incremented `phase_iteration`, toggle `review_model`, write `consecutive_clean`, set `next_phase` to the corresponding post-review phase. Return a **block** decision with a precise instruction message (see block message template below).
 6. If `next_phase` is NOT a review phase, or `phase_iteration > max_reviews`, or `next_phase` is null:
@@ -179,18 +179,24 @@ The hook script invokes the `claude` CLI like this:
 
 ```bash
 REVIEW_LOG=".taskie/plans/${PLAN_ID}/.review-${ITERATION}.log"
-claude --print \
+VERDICT_SCHEMA='{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}'
+
+CLI_OUTPUT=$(claude --print \
        --model "${REVIEW_MODEL}" \
+       --output-format json \
+       --json-schema "$VERDICT_SCHEMA" \
        --dangerously-skip-permissions \
-       "Read the ground rules in ${PLUGIN_ROOT}/ground-rules.md, then read the plan in .taskie/plans/${PLAN_ID}/plan.md, then read .taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}.md. Now perform the code review action described in ${PLUGIN_ROOT}/actions/code-review.md for this task. Write your review to .taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}-review-${ITERATION}.md. Be very critical. At the very end of your review, write exactly one of these lines: VERDICT: PASS (if no issues found) or VERDICT: FAIL (if issues found)." \
-       >"$REVIEW_LOG" 2>&1
+       "Read the ground rules in ${PLUGIN_ROOT}/ground-rules.md, then read the plan in .taskie/plans/${PLAN_ID}/plan.md, then read .taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}.md. Now perform the code review action described in ${PLUGIN_ROOT}/actions/code-review.md for this task. Write your review to .taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}-review-${ITERATION}.md. Be very critical." \
+       2>"$REVIEW_LOG")
 ```
 
 Key flags:
 - `--print` / `-p`: Non-interactive mode. The CLI performs the review using tools and exits.
 - `--model "${REVIEW_MODEL}"`: Uses `opus` or `sonnet` alias, which the CLI resolves to the latest version automatically. No manual model ID updates needed.
+- `--output-format json`: Returns structured JSON on stdout containing `result`, `session_id`, `cost`, and `usage` fields.
+- `--json-schema`: Constrains the CLI's final output to match the verdict schema. The `result` field will contain `{"verdict": "PASS"}` or `{"verdict": "FAIL"}`. This is validated by the CLI — the model cannot return an invalid verdict.
 - `--dangerously-skip-permissions`: Required because the subprocess needs to read files, write the review file, and run must-run commands without interactive permission prompts. All tools are available. **Security note**: the subprocess can run arbitrary commands — this is acceptable because it runs in the same project directory as the main agent with the same trust level.
-- Both stdout and stderr are captured to `.review-${ITERATION}.log` (dotfile, hidden by default). The review content is written to disk via the CLI's Write tool (not stdout), so capturing stdout doesn't lose the review. Capturing both streams ensures all diagnostic output (tool use summaries, progress indicators, error messages) is available for debugging if the CLI subprocess fails. The log file is cleaned up by the hook after a successful review (review file exists and is non-empty). On failure, the log persists so the user can inspect it.
+- Stdout is captured to `CLI_OUTPUT` for verdict extraction via `jq`. Stderr is captured to `.review-${ITERATION}.log` (dotfile, hidden by default) for debugging if the CLI subprocess fails. The review content is written to disk via the CLI's Write tool (separate from the JSON on stdout). The log file is cleaned up by the hook after a successful review. On failure, the log persists so the user can inspect it.
 
 **Note:** The `claude` CLI subprocess invoked by the hook does NOT trigger Stop hooks because it runs in `--print` mode (non-interactive). It simply executes tools, produces output, and exits. The `stop_hook_active` field is only relevant for the main agent's session.
 
@@ -198,18 +204,20 @@ The prompt instructs the CLI to read the ground rules, plan, and task file befor
 
 For **plan reviews**, the prompt is adapted:
 ```bash
-"Read the ground rules in ${PLUGIN_ROOT}/ground-rules.md, then read .taskie/plans/${PLAN_ID}/plan.md. Perform the plan review action described in ${PLUGIN_ROOT}/actions/plan-review.md. Write your review to .taskie/plans/${PLAN_ID}/plan-review-${ITERATION}.md. Be very critical. At the very end of your review, write exactly one of these lines: VERDICT: PASS (if no issues found) or VERDICT: FAIL (if issues found)."
+"Read the ground rules in ${PLUGIN_ROOT}/ground-rules.md, then read .taskie/plans/${PLAN_ID}/plan.md. Perform the plan review action described in ${PLUGIN_ROOT}/actions/plan-review.md. Write your review to .taskie/plans/${PLAN_ID}/plan-review-${ITERATION}.md. Be very critical."
 ```
 
 For **tasks reviews**:
 ```bash
-"Read the ground rules in ${PLUGIN_ROOT}/ground-rules.md, then read .taskie/plans/${PLAN_ID}/tasks.md and the task files: ${TASK_FILE_LIST}. Perform the tasks review action described in ${PLUGIN_ROOT}/actions/tasks-review.md. Write your review to .taskie/plans/${PLAN_ID}/tasks-review-${ITERATION}.md. Be very critical. At the very end of your review, write exactly one of these lines: VERDICT: PASS (if no issues found) or VERDICT: FAIL (if issues found)."
+"Read the ground rules in ${PLUGIN_ROOT}/ground-rules.md, then read .taskie/plans/${PLAN_ID}/tasks.md and the task files: ${TASK_FILE_LIST}. Perform the tasks review action described in ${PLUGIN_ROOT}/actions/tasks-review.md. Write your review to .taskie/plans/${PLAN_ID}/tasks-review-${ITERATION}.md. Be very critical."
 ```
 
 For **all-code-reviews**:
 ```bash
-"Read the ground rules in ${PLUGIN_ROOT}/ground-rules.md, then read .taskie/plans/${PLAN_ID}/plan.md, .taskie/plans/${PLAN_ID}/tasks.md, and the task files: ${TASK_FILE_LIST}. Perform the all-code-review action described in ${PLUGIN_ROOT}/actions/all-code-review.md. Write your review to .taskie/plans/${PLAN_ID}/all-code-review-${ITERATION}.md. Be very critical. At the very end of your review, write exactly one of these lines: VERDICT: PASS (if no issues found) or VERDICT: FAIL (if issues found)."
+"Read the ground rules in ${PLUGIN_ROOT}/ground-rules.md, then read .taskie/plans/${PLAN_ID}/plan.md, .taskie/plans/${PLAN_ID}/tasks.md, and the task files: ${TASK_FILE_LIST}. Perform the all-code-review action described in ${PLUGIN_ROOT}/actions/all-code-review.md. Write your review to .taskie/plans/${PLAN_ID}/all-code-review-${ITERATION}.md. Be very critical."
 ```
+
+All four prompts use the same `--output-format json --json-schema "$VERDICT_SCHEMA"` flags. The verdict is returned as structured JSON on stdout — the prompt no longer needs to instruct the model to include a VERDICT line in the markdown. The `--json-schema` flag constrains the model's final response to `{"verdict": "PASS"}` or `{"verdict": "FAIL"}`, which is schema-validated by the CLI itself.
 
 **Note:** `TASK_FILE_LIST` is constructed by the hook from `tasks.md` — it extracts task IDs from the table rows and expands them to `.taskie/plans/${PLAN_ID}/task-{N}.md` paths. This avoids the `task-*.md` glob which would also match review and post-review files (e.g. `task-1-review-2.md`, `task-1-post-review-1.md`), potentially overloading the CLI subprocess context window. The hook builds this list with:
 ```bash
@@ -570,7 +578,7 @@ Tests that the hook invokes the `claude` CLI with the correct flags and argument
 | 11 | Claude CLI fails (exit 1) | `MOCK_CLAUDE_EXIT_CODE=1` | hook approves (falls through to validation), warning logged |
 | 12 | Claude CLI fails to write review file | `MOCK_CLAUDE_REVIEW_DIR` not set (mock writes nothing) | hook approves (falls through to validation), warning logged |
 | 13 | Claude CLI timeout | `MOCK_CLAUDE_DELAY=5` with hook timeout shorter | hook approves (falls through), warning logged |
-| 14 | Prompt includes VERDICT instruction | any review trigger | prompt contains `VERDICT: PASS` and `VERDICT: FAIL` |
+| 14 | CLI uses structured JSON output | any review trigger | args contain `--output-format json` and `--json-schema` |
 
 ### Test Suite 5: Block Message Templates (part of test-stop-hook-auto-review.sh)
 
