@@ -8,31 +8,7 @@ Performed a clean slate review of the task list (`tasks.md`) and all task files 
 
 ## Critical Issues (Must Fix)
 
-### C1: Task 1.2 mock-claude.sh acceptance criteria incorrect — predates JSON verdict change
-
-**Location**: `task-1.md` lines 40-58
-
-**Issue**: The acceptance criteria for the mock claude CLI describes writing "VERDICT: PASS" and "VERDICT: FAIL" lines at the end of review markdown files. This is **incorrect and predates the architectural change** to structured JSON output.
-
-According to the plan (lines 227-228):
-> All four prompts use the same `--output-format json --json-schema "$VERDICT_SCHEMA"` flags. The verdict is returned as structured JSON on stdout — the prompt no longer needs to instruct the model to include a VERDICT line in the markdown.
-
-And the verdict extraction (line 175):
-> The hook extracts the verdict from the CLI's structured JSON output (captured in step 5d): `VERDICT=$(echo "$CLI_OUTPUT" | jq -r '.result.verdict')`.
-
-The mock should return JSON on stdout with `{"result": {"verdict": "PASS"}, ...}` structure, NOT write "VERDICT:" lines in markdown files.
-
-**Fix required**: Update acceptance criteria to:
-- Return complete structured JSON on stdout with fields: `result` (containing `verdict`), `session_id`, `cost`, `usage`
-- Verdict value (`PASS` or `FAIL`) based on `MOCK_CLAUDE_VERDICT` env var
-- Review markdown files do NOT contain "VERDICT:" lines
-- Hook extracts verdict via `jq -r '.result.verdict'` from stdout
-
-**Evidence**: The task description (line 30) explicitly states "Note: The mock code sample in `plan.md` is outdated (predates the JSON verdict change). Follow the acceptance criteria below, not the plan's code sample." But then the acceptance criteria STILL describe the old behavior.
-
----
-
-### C2: Task 1.3 missing test-hooks target requirement
+### C1: Task 1.3 missing test-hooks target requirement
 
 **Location**: `task-1.md` line 76
 
@@ -45,7 +21,7 @@ Plan line 422: `make test-hooks` runs all hook tests
 
 ---
 
-### C3: Task 3.2 CLI subprocess timeout handling is fundamentally wrong
+### C2: Task 3.2 CLI subprocess timeout handling is fundamentally wrong
 
 **Location**: `task-3.md` lines 46-47
 
@@ -67,30 +43,7 @@ The crash recovery in `continue-plan.md` (task 4.2) is the **solution** to this 
 
 ---
 
-### C4: Task 3.3 remaining tasks check has off-by-one error in awk logic
-
-**Location**: `task-3.md` line 70
-
-**Issue**: The acceptance criteria show this check for remaining tasks:
-```bash
-grep '^|' tasks.md | tail -n +3 | awk -F'|' -v cur="${CURRENT_TASK}" '{gsub(/[[:space:]]/, "", $2); if ($2 != cur) print $3}' | grep -i 'pending' | wc -l
-```
-
-This has a subtle bug: it extracts column 3 (Status) for all tasks where Id != current task, then greps for "pending". But this approach:
-1. Doesn't exclude the header row reliably (depends on `tail -n +3` which assumes exactly 2 header rows)
-2. Doesn't handle the case where `cur` is "1" and task "10", "11", "12" exist (the comparison `$2 != cur` is string-based, not numeric)
-
-Actually, looking more carefully: the `tail -n +3` does skip header rows (line 1 = header, line 2 = separator, line 3+ = data), so point #1 is fine.
-
-But point #2 is still valid: string comparison `$2 != cur` works correctly because we've stripped whitespace with `gsub`, so "1" != "10" is true. The note in the acceptance criteria claims "avoids partial matches that would incorrectly exclude task 10/11/12 when current is task 1" — but this is correct behavior. The issue is **not an error**, it's actually correct.
-
-Wait, re-reading: "exact Id match on stripped column 2" — this IS correct. String equality after stripping whitespace is exact match.
-
-**No fix required** — I initially misread this. The logic is correct.
-
----
-
-### C5: Task 4.2 artifact completeness check for plan.md uses OR logic — should be AND
+### C3: Task 4.2 artifact completeness check for plan.md uses OR logic — should be AND
 
 **Location**: `task-4.md` line 40
 
@@ -111,23 +64,7 @@ This ensures the file exists before checking line count.
 
 ## Blocking Issues (Must Address Before Implementation)
 
-### B1: Task 3.3 auto-advance for all-code-review contradicts itself
-
-**Location**: `task-3.md` lines 67-68
-
-**Issue**: The acceptance criteria state:
-> "all-code-review → `complete` (letting `continue-plan` handle final phase transition to `phase: "complete"`, `next_phase: null`)"
-
-But the plan (line 122) says:
-> "After all-code-review passes (2 clean) → set `phase: "complete"`, `next_phase: null`, agent stops."
-
-The hook should set `phase: "complete"` and `next_phase: null` directly, NOT set `next_phase: "complete"` and let `continue-plan` handle it.
-
-**Fix required**: Clarify that the hook sets `phase: "complete"` and `next_phase: null` directly when two consecutive all-code-reviews pass. No delegation to `continue-plan` for this transition.
-
----
-
-### B2: Task 5.2 missing instruction about task selection
+### B1: Task 5.2 missing instruction about task selection
 
 **Location**: `task-5.md` line 38
 
@@ -143,7 +80,7 @@ The hook checks for remaining tasks (task 3.3), but the **action file** needs to
 
 ---
 
-### B3: Task 4.2 missing explicit instruction for "no state.json" fallback
+### B2: Task 4.2 missing explicit instruction for "no state.json" fallback
 
 **Location**: `task-4.md` line 44
 
@@ -295,20 +232,18 @@ Task 3.5 (lines 93-95) implements this as a verification subtask with incrementa
 
 | Category | Count | Severity |
 |----------|-------|----------|
-| Critical | 5 | Must fix before implementation |
-| Blocking | 3 | Must clarify/address before proceeding |
+| Critical | 3 | Must fix before implementation |
+| Blocking | 2 | Must clarify/address before proceeding |
 | Minor | 5 | Should fix for clarity |
 | Non-Issues | 4 | Verified correct |
 
-**Overall Assessment**: The task breakdown is generally sound and matches the plan structure well, but there are **5 critical issues** that must be fixed before implementation begins:
+**Overall Assessment**: The task breakdown is generally sound and matches the plan structure well, but there are **3 critical issues** that must be fixed before implementation begins:
 
-1. **C1**: Mock claude JSON output format is completely wrong (predates architectural change)
-2. **C2**: Missing `make test-hooks` target requirement
-3. **C3**: Timeout recovery mechanism not connected to crash recovery heuristic
-4. **C5**: Plan.md completeness check uses unsafe OR logic
-5. **B1**: All-code-review auto-advance contradicts itself
+1. **C1**: Missing `make test-hooks` target requirement
+2. **C2**: Timeout recovery mechanism not connected to crash recovery heuristic
+3. **C3**: Plan.md completeness check uses unsafe OR logic
 
-Additionally, **3 blocking issues** need clarification to avoid implementation ambiguity.
+Additionally, **2 blocking issues** need clarification to avoid implementation ambiguity.
 
 The **5 minor issues** are mostly documentation/clarity improvements and can be addressed during implementation, but should not be ignored.
 
@@ -316,11 +251,11 @@ The **5 minor issues** are mostly documentation/clarity improvements and can be 
 
 ## Recommendation
 
-**Do NOT proceed with implementation** until the 5 critical issues and 3 blocking issues are addressed. The mock claude output format issue (C1) is particularly severe — it represents a fundamental misunderstanding of the hook's verdict extraction mechanism and would cause all auto-review tests to fail.
+**Do NOT proceed with implementation** until the 3 critical issues and 2 blocking issues are addressed.
 
 **Next steps**:
-1. Fix critical issues C1, C2, C3, C5, B1
-2. Clarify blocking issues B2, B3
+1. Fix critical issues C1, C2, C3
+2. Clarify blocking issues B1, B2
 3. Update task files with corrections
 4. Run `/taskie:tasks-review` again to verify fixes
 5. Only then proceed to `/taskie:next-task`
