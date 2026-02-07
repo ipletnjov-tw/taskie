@@ -87,7 +87,7 @@ Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existin
 - **Acceptance criteria**:
   - `plugin.json` hook entry points to `hooks/stop-hook.sh` with 600-second timeout
   - `validate-ground-rules.sh` is removed
-  - Plugin version bumped in both `.claude-plugin/marketplace.json` and `taskie/.claude-plugin/plugin.json` (MAJOR: 2.2.1 → 3.0.0)
+  - Plugin version bumped in both `.claude-plugin/marketplace.json` and `taskie/.claude-plugin/plugin.json` (MAJOR: 2.2.1 → 3.0.0 — breaking change: replaces `validate-ground-rules.sh` hook with `stop-hook.sh`, adds auto-review behavior, increases timeout from 5s to 600s)
   - Update `README.md` latest version reference to match
   - Update `tests/README.md` with new test file descriptions
   - All 17 tests in test suite 1 pass

@@ -44,7 +44,7 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
   - Code-review uses `current_task` from state directly (not TASK_FILE_LIST)
   - Review file existence verified after CLI returns
   - CLI failure (exit code, missing review file, not on PATH) → approve with warning
-  - CLI subprocess timeout is handled by Claude Code's 600s hook timeout — do NOT use the shell `timeout` command (not available on macOS). If the hook is killed by the system timeout, the stop is allowed through by default. **KNOWN LIMITATION**: If the hook times out after incrementing `phase_iteration` but before writing the review file, `state.json` will be left inconsistent. The `continue-plan` crash recovery heuristic (Task 4.2) handles this by checking artifact completeness when `next_phase` is a review phase.
+  - CLI subprocess timeout is handled by Claude Code's 600s hook timeout — do NOT use the shell `timeout` command (not available on macOS). If the hook is killed by the system timeout, the stop is allowed through by default. **KNOWN LIMITATION**: If the hook times out after incrementing `phase_iteration` but before writing the review file, `state.json` will be left inconsistent. **RECOVERY MECHANISM**: The crash recovery heuristic in Task 4.2 (`continue-plan.md`) automatically handles this timeout-induced inconsistency by checking artifact completeness (review file existence) when resuming with `next_phase` set to a review phase.
   - Log file (`.review-${ITERATION}.log`) cleaned up after successful review (CLI exited 0 and review file was written, regardless of PASS/FAIL verdict), persists on CLI failure for debugging
 
 ### Subtask 3.3: Implement verdict extraction and consecutive clean tracking (step 5f-g)

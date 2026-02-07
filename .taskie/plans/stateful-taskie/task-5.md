@@ -23,7 +23,7 @@ Update all task implementation and review action files with state.json read/writ
   - No conditional logic based on invocation context
   - No delegation to or from `complete-task`
   - No logic for detecting last task or transitioning to `all-code-review` (handled by hook)
-  - All other fields (`max_reviews`, `phase_iteration`, `review_model`, `consecutive_clean`, `tdd`) preserved from existing state via read-modify-write
+  - All other fields preserved EXCEPT `phase_iteration` which is set to `null` (standalone mode, not in review cycle): `max_reviews`, `review_model`, `consecutive_clean`, `tdd` preserved from existing state via read-modify-write
 
 ### Subtask 5.2: Update `complete-task.md` and `complete-task-tdd.md`
 - **Short description**: Update both action files with their OWN implementation instructions (inlining relevant parts of `next-task.md`/`next-task-tdd.md`). After implementation, write `state.json` ONCE: `max_reviews` (preserved), `current_task: "{id}"`, `phase: "complete-task"` (or `"complete-task-tdd"`), `next_phase: "code-review"`, `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`, `tdd: false` (or `true` for TDD variant). Remove the existing Phase 2/3/4 review loop from `complete-task.md` — the hook now handles it.
@@ -37,6 +37,8 @@ Update all task implementation and review action files with state.json read/writ
 - **Acceptance criteria**:
   - Both files contain their OWN implementation instructions (no delegation to `next-task`)
   - Implementation instructions are inlined (~10 lines of task implementation steps)
+  - Action reads `tasks.md` and selects the first task with status "pending" (same logic as current implementation)
+  - Sets `current_task` in `state.json` to the selected task ID
   - `state.json` written ONCE after implementation completes
   - `complete-task.md` sets `tdd: false`; `complete-task-tdd.md` sets `tdd: true`
   - `next_phase: "code-review"` triggers auto-review loop via hook
