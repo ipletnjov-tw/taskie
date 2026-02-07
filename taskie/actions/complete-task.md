@@ -1,28 +1,69 @@
-# Complete Task with Review Cycle
+# Complete Task with Automated Review Cycle
 
-Execute full task completion: Next Task → Code Review → Post-Code-Review → Complete. You MUST complete ONLY ONE task.
+Execute full task completion with automated review: implementation → automated code review loop → completion.
 
-## Phase 1: Next Task / Implementation
+You MUST follow `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` at ALL times.
 
-Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/next-task.md`.
+## Step 1: Select next task
 
-## Phase 2: Code Review
-
-Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`.
-
-If no issues are identified, skip to Phase 4.
-
-## Phase 3: Post-Code-Review
-
-Execute action `@${CLAUDE_PLUGIN_ROOT}/actions/post-code-review.md`.
-
-You MUST address ALL issues. Return to Phase 2 after addressing issues. Maximum of 3 code-review <-> post-code-review cycles per task.
-If issues remain after 3 cycles, pause and request human input.
-
-## Phase 4: Complete
-
-Update subtask status to "completed" and task status to "done", then push to remote.
+Read `.taskie/plans/{current-plan-dir}/tasks.md` and identify the first task with status "pending". This is the task you will implement.
 
 If you don't know the `{current-plan-dir}`, use git history to find the most recently modified plan.
 
-Remember, you MUST follow `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+## Step 2: Implement the task
+
+Implement the selected task, including ALL of its subtasks. You MUST NOT implement more than ONE task. You MUST run all must-run commands for EVERY subtask to verify completion.
+
+1. Read the task file `.taskie/plans/{current-plan-dir}/task-{task-id}.md` to understand the task requirements and subtasks
+2. Implement each subtask according to its acceptance criteria
+3. Run all must-run commands specified in each subtask
+4. Document your progress with a short summary in the task file
+5. Update the status and git commit hash of each subtask
+6. Update the task status in `tasks.md` to "done"
+7. Commit your changes with an appropriate commit message
+8. Push to remote
+
+## Step 3: Initialize automated review cycle
+
+After completing implementation, you MUST update the workflow state file at `.taskie/plans/{current-plan-dir}/state.json`:
+
+1. Read the existing `state.json` file to preserve `max_reviews`
+2. Update the state with the following fields:
+   - `phase`: `"complete-task"`
+   - `current_task`: `"{task-id}"` (the task ID you just implemented)
+   - `next_phase`: `"code-review"` (trigger automated code review)
+   - `phase_iteration`: `0` (start fresh review cycle)
+   - `review_model`: `"opus"` (reset to default for new cycle)
+   - `consecutive_clean`: `0` (reset counter for new cycle)
+   - `tdd`: `false` (this is the non-TDD variant)
+   - `max_reviews`: preserve from existing state
+3. Write the updated state atomically using a temp file: write to a temporary file first, then `mv` to `state.json`
+
+Example bash command for atomic write:
+```bash
+TEMP_STATE=$(mktemp)
+jq --arg phase "complete-task" \
+   --arg current_task "{task-id}" \
+   --arg next_phase "code-review" \
+   --argjson phase_iteration 0 \
+   --arg review_model "opus" \
+   --argjson consecutive_clean 0 \
+   --argjson tdd false \
+   '.phase = $phase | .current_task = $current_task | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .tdd = $tdd' \
+   state.json > "$TEMP_STATE"
+mv "$TEMP_STATE" state.json
+```
+
+## Step 4: Stop and let automation take over
+
+After writing `state.json`, STOP. The automated review cycle will begin when you stop:
+
+1. The hook will trigger `code-review` automatically
+2. Reviews will alternate between opus and sonnet models
+3. If reviews pass (2 consecutive clean reviews), the workflow auto-advances to the next task
+4. If reviews fail, you'll be prompted to execute `post-code-review` to fix issues
+5. The review cycle continues until quality standards are met or max_reviews is reached
+
+To escape the automated cycle at any point, set `next_phase: null` in `state.json`.
+
+Do NOT forget to push your changes to remote.
