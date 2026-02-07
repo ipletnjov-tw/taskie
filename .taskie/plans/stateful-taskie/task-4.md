@@ -34,6 +34,7 @@ Update `new-plan.md`, `continue-plan.md`, and `create-tasks.md` with state.json 
 - **Acceptance criteria**:
   - Reads `state.json` as first step (before any git history analysis)
   - Routes correctly for all `next_phase` values listed in the plan
+  - When `next_phase` is `"complete-task"` or `"complete-task-tdd"`, routes to the corresponding action file which internally determines the next pending task from `tasks.md` — `continue-plan` delegates task selection to the action, it doesn't determine which task ID to execute
   - Two-level crash recovery heuristic for review phases:
     - Checks `phase` for post-review → just stop
     - Checks artifact completeness for plan-review (plan.md exists and has `## Overview` heading OR >50 lines — either condition suffices)

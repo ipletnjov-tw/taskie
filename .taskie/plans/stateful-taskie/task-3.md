@@ -92,7 +92,7 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
 ### Subtask 3.5: Write test suites 2-5
 - **Short description**: Implement all tests for suites 2 (auto-review logic, 15 tests), 3 (state transitions, 16 tests), 4 (CLI invocation, 14 tests), and 5 (block message templates, 6 tests) as specified in the plan. Tests use the mock `claude` CLI and shared helpers. Each test creates its own temp directory and cleans up in a trap. **Write tests alongside implementation**: as you complete each implementation subtask (3.1-3.4), immediately write and commit the corresponding tests. This ensures immediate feedback and prevents late discovery of integration issues. For example: write and commit suite 2 tests 4-5, 8-11 immediately after completing 3.1; write and commit suite 4 tests immediately after completing 3.2, etc.
 - **Status**: pending
-- **Sample git commit message**: Add test suites 2-5 for auto-review, state transitions, CLI invocation, block messages
+- **Sample git commit message**: Tests should be committed incrementally with each implementation subtask (e.g., "Add suite 2 tests for state detection and max_reviews logic", "Add suite 4 tests for CLI invocation", etc.)
 - **Git commit hash**:
 - **Priority**: high
 - **Complexity**: 8
@@ -102,6 +102,7 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
   - `tests/hooks/test-stop-hook-auto-review.sh` contains 15 tests (suite 2) + 6 tests (suite 5) = 21 tests
   - `tests/hooks/test-stop-hook-state-transitions.sh` contains 16 tests (suite 3)
   - `tests/hooks/test-stop-hook-cli-invocation.sh` contains 14 tests (suite 4)
+  - Suite 4 includes a test that verifies `TASK_FILE_LIST` construction: creates a `tasks.md` with known task IDs (e.g. 1, 2, 3), triggers tasks-review or all-code-review, and checks that `MOCK_CLAUDE_LOG` contains the expected file paths (`task-1.md`, `task-2.md`, `task-3.md`) to catch regressions in the awk-based ID extraction
   - All tests source shared helpers and use mock claude
   - All tests clean up temp directories in trap handlers
   - `make test` passes with all 51 tests green

@@ -68,7 +68,7 @@ Set up the shared test helpers, mock `claude` CLI, and test runner/Makefile upda
 - **Must-run commands**: `make test`
 - **Acceptance criteria**:
   - `run-tests.sh` accepts arguments: `all` (default), `hooks`, `state`, `validation`, or a specific file path
-  - `state` argument runs: `test-stop-hook-auto-review.sh`, `test-stop-hook-state-transitions.sh`, `test-stop-hook-cli-invocation.sh`
+  - `state` argument runs: `test-stop-hook-auto-review.sh`, `test-stop-hook-state-transitions.sh`, `test-stop-hook-cli-invocation.sh` (includes all stateful auto-review feature tests: state transitions, CLI invocation, auto-advance logic)
   - `validation` argument runs: `test-stop-hook-validation.sh` (after Task 2 renames it from `test-validate-ground-rules.sh`)
   - `hooks` argument runs all test files in `tests/hooks/`
   - `make test-state` runs only state/auto-review test files

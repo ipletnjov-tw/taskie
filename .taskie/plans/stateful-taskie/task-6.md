@@ -49,6 +49,7 @@ Update `ground-rules.md` with state.json documentation, update Codex CLI prompts
 - **Acceptance criteria**:
   - `tests/hooks/test-stop-hook-edge-cases.sh` contains 12 tests matching plan specification
   - Test 1: validates most-recent-plan selection with multiple plan dirs
+  - Test 5: concurrent plan creation (state.json exists but plan.md doesn't) uses `next_phase: null` in state to ensure validation runs (not auto-review)
   - Test 8: verifies `max_reviews: 0` advances state without CLI invocation
   - Test 10: full model alternation integration (4 iterations, mock CLI)
   - Test 11: two consecutive clean reviews integration (2 hook invocations)
