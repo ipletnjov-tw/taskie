@@ -21,6 +21,10 @@ Set up the shared test helpers, mock `claude` CLI, and test runner/Makefile upda
   - `create_test_plan` creates a directory with `plan.md` and `tasks.md` (valid table format)
   - `run_hook` pipes JSON to the hook, captures stdout, stderr, and exit code separately
   - `print_results` exits 1 if any failures occurred
+  - `run_hook` captures stdout, stderr, and exit code separately (use temp files or capture variables)
+  - `assert_approved` verifies exit code 0 AND either no output, `{"suppressOutput": true}`, or `{"systemMessage": "..."}`  (no `decision: "block"` in output)
+  - `assert_blocked` verifies exit code 0 AND `decision: "block"` in JSON output, optionally checks reason matches pattern
+  - `create_state_json` accepts plan directory path and full JSON string as parameters
 
 ### Subtask 1.2: Create mock claude CLI (`tests/hooks/helpers/mock-claude.sh`)
 - **Short description**: Create a mock `claude` CLI script that simulates the real CLI based on environment variables: `MOCK_CLAUDE_EXIT_CODE`, `MOCK_CLAUDE_REVIEW_DIR`, `MOCK_CLAUDE_REVIEW_FILE`, `MOCK_CLAUDE_DELAY`, `MOCK_CLAUDE_LOG`, `MOCK_CLAUDE_VERDICT`. **Note:** The mock code sample in `plan.md` is outdated (predates the JSON verdict change). Follow the acceptance criteria below, not the plan's code sample.
@@ -34,8 +38,20 @@ Set up the shared test helpers, mock `claude` CLI, and test runner/Makefile upda
 - **Acceptance criteria**:
   - File exists at `tests/hooks/helpers/mock-claude.sh` and is executable
   - Logs invocation args to `MOCK_CLAUDE_LOG` when set
-  - Writes a review file to `MOCK_CLAUDE_REVIEW_DIR/MOCK_CLAUDE_REVIEW_FILE` when both are set (review content is plain markdown without VERDICT lines — the verdict is returned via stdout JSON separately)
-  - Returns structured JSON on stdout matching `--output-format json` format: `{"result":{"verdict":"PASS"}}` or `{"result":{"verdict":"FAIL"}}` based on `MOCK_CLAUDE_VERDICT` (default `FAIL`). The hook extracts the verdict via `jq -r '.result.verdict'`.
+  - Writes a review file to `MOCK_CLAUDE_REVIEW_DIR/MOCK_CLAUDE_REVIEW_FILE` when both are set with the following content:
+    - For `MOCK_CLAUDE_VERDICT=PASS`: "# Review\nNo issues found. The implementation looks good."
+    - For `MOCK_CLAUDE_VERDICT=FAIL`: "# Review\n## Issues Found\n1. Example issue description"
+    - No VERDICT lines in markdown (verdict is returned via stdout JSON separately)
+  - Returns complete structured JSON on stdout matching `--output-format json` format with all 4 fields:
+    ```json
+    {
+      "result": {"verdict": "PASS"},
+      "session_id": "mock-session",
+      "cost": {"input_tokens": 100, "output_tokens": 50},
+      "usage": {"requests": 1}
+    }
+    ```
+    Verdict (`PASS` or `FAIL`) is based on `MOCK_CLAUDE_VERDICT` (default `FAIL`). The hook extracts via `jq -r '.result.verdict'` which returns the string `"PASS"` or `"FAIL"`, not the object.
   - Exits with `MOCK_CLAUDE_EXIT_CODE` (default 0)
   - Sleeps for `MOCK_CLAUDE_DELAY` seconds when set
   - Gracefully accepts all CLI flags the hook passes (`--print`, `--model`, `--output-format`, `--json-schema`, `--dangerously-skip-permissions`) without errors — flags are logged but don't alter mock behavior
@@ -52,7 +68,11 @@ Set up the shared test helpers, mock `claude` CLI, and test runner/Makefile upda
 - **Must-run commands**: `make test`
 - **Acceptance criteria**:
   - `run-tests.sh` accepts arguments: `all` (default), `hooks`, `state`, `validation`, or a specific file path
+  - `state` argument runs: `test-stop-hook-auto-review.sh`, `test-stop-hook-state-transitions.sh`, `test-stop-hook-cli-invocation.sh`
+  - `validation` argument runs: `test-stop-hook-validation.sh` (after Task 2 renames it from `test-validate-ground-rules.sh`)
+  - `hooks` argument runs all test files in `tests/hooks/`
   - `make test-state` runs only state/auto-review test files
   - `make test-validation` runs only the validation test file
+  - `make test-hooks` runs all hook tests (all `test-*.sh` files in `tests/hooks/`)
   - `make test` runs all tests (existing behavior preserved)
   - Single file execution works: `./run-tests.sh tests/hooks/test-stop-hook-validation.sh`

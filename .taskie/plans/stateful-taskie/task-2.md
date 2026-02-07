@@ -7,7 +7,7 @@ Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existin
 ## Subtasks
 
 ### Subtask 2.1: Create `stop-hook.sh` with hook boilerplate and input parsing
-- **Short description**: Create `taskie/hooks/stop-hook.sh` with the unified hook structure: read JSON from stdin, extract `cwd` and `stop_hook_active`, validate inputs, `cd` into `cwd`, check for `stop_hook_active` (approve immediately if true), check for `.taskie/plans` directory. Resolve `PLUGIN_ROOT` relative to the hook's location. Set hook timeout to 600 seconds.
+- **Short description**: Create `taskie/hooks/stop-hook.sh` with the unified hook structure: read JSON from stdin, extract `cwd` and `stop_hook_active`, validate inputs, `cd` into `cwd`, check for `stop_hook_active` (approve immediately if true), check for `.taskie/plans` directory. Resolve `PLUGIN_ROOT` relative to the hook's location. Note: hook timeout (600 seconds) and hook registration are handled in subtask 2.5, not here.
 - **Status**: pending
 - **Sample git commit message**: Create stop-hook.sh with input parsing and boilerplate
 - **Git commit hash**:
@@ -20,9 +20,10 @@ Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existin
   - Reads JSON from stdin, extracts `cwd` and `stop_hook_active`
   - Exits with code 2 + stderr message on invalid JSON or invalid directory
   - Approves immediately with `{"suppressOutput": true}` when `stop_hook_active` is true
+  - Executes `cd "$CWD"` after validating the directory exists, before any `.taskie/plans` checks
   - Approves with `{"suppressOutput": true}` when `.taskie/plans` doesn't exist
   - `PLUGIN_ROOT` resolved as `$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)`
-  - Hook timeout set to 600 seconds in `plugin.json`
+  - Finds the most recently modified plan directory using `find` with `\( -name "*.md" -o -name "state.json" \)` to consider both markdown and state.json modification times
 
 ### Subtask 2.2: Port validation rules 1-7 from `validate-ground-rules.sh`
 - **Short description**: Copy the existing validation logic (rules 1-7) into `stop-hook.sh`. The validation runs in step 6 of the hook logic — after auto-review has been handled or when falling through. Find the most recently modified plan directory using `find` with `\( -name "*.md" -o -name "state.json" \)`. Preserve all existing rule behavior exactly.

@@ -22,6 +22,8 @@ Update all task implementation and review action files with state.json read/writ
   - `next_phase` always `null` (standalone, no automation)
   - No conditional logic based on invocation context
   - No delegation to or from `complete-task`
+  - No logic for detecting last task or transitioning to `all-code-review` (handled by hook)
+  - All other fields (`max_reviews`, `phase_iteration`, `review_model`, `consecutive_clean`, `tdd`) preserved from existing state via read-modify-write
 
 ### Subtask 5.2: Update `complete-task.md` and `complete-task-tdd.md`
 - **Short description**: Update both action files with their OWN implementation instructions (inlining relevant parts of `next-task.md`/`next-task-tdd.md`). After implementation, write `state.json` ONCE: `max_reviews` (preserved), `current_task: "{id}"`, `phase: "complete-task"` (or `"complete-task-tdd"`), `next_phase: "code-review"`, `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`, `tdd: false` (or `true` for TDD variant). Remove the existing Phase 2/3/4 review loop from `complete-task.md` — the hook now handles it.
@@ -39,8 +41,9 @@ Update all task implementation and review action files with state.json read/writ
   - `complete-task.md` sets `tdd: false`; `complete-task-tdd.md` sets `tdd: true`
   - `next_phase: "code-review"` triggers auto-review loop via hook
   - Old Phase 2/3/4 review loop removed from both `complete-task.md` and `complete-task-tdd.md`
+  - Read entire `state.json` before modifying (read-modify-write pattern)
   - `max_reviews` preserved from existing state
-  - `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0` (fresh review cycle)
+  - `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0` (fresh review cycle — must reset when entering code review)
 
 ### Subtask 5.3: Update `continue-task.md`
 - **Short description**: Update to write `state.json` with `phase: "continue-task"`, preserving the existing `next_phase` value (transparent pass-through). Read `next_phase` from current `state.json` before updating — if already set to a review phase, preserve it. If null, keep null.
@@ -67,10 +70,11 @@ Update all task implementation and review action files with state.json read/writ
 - **Test approach**: Manual: verify each post-review action sets `next_phase` back to review phase when `phase_iteration` is non-null. Verify standalone review actions set `next_phase: null`.
 - **Must-run commands**: N/A (prompt files)
 - **Acceptance criteria**:
-  - Review actions (4 files): standalone sets `next_phase: null`; hook-invoked doesn't update state
+  - Review actions (4 files): when `phase_iteration` is null in state.json (standalone), set `phase: "{review-type}"` and `next_phase: null`. When `phase_iteration` is non-null (hook-invoked), don't update state.json (hook manages it)
   - Post-review actions (4 files): automated flow sets `next_phase` to corresponding review phase; standalone sets `next_phase: null`
-  - Automated vs standalone detection: check if `phase_iteration` is non-null in `state.json`
+  - Automated vs standalone detection for post-review actions: check if `phase_iteration` is non-null in `state.json`
   - All 8 files use read-modify-write pattern for state updates
+  - All other state fields preserved unchanged in standalone mode
 
 ### Subtask 5.5: Update `add-task.md`
 - **Short description**: Update `taskie/actions/add-task.md` to write `state.json`: set `current_task` to the new task ID if no task is currently in progress (i.e. `current_task` is null). If a task is already in progress, leave `current_task` unchanged.
@@ -82,6 +86,6 @@ Update all task implementation and review action files with state.json read/writ
 - **Test approach**: Manual: run `/taskie:add-task` with `current_task: null` and verify it's set. Run with `current_task: "3"` and verify it's unchanged.
 - **Must-run commands**: N/A (prompt file)
 - **Acceptance criteria**:
-  - Sets `current_task` to new task ID only when `current_task` is currently null
-  - Preserves `current_task` when a task is already in progress
+  - If `current_task` is null: set to new task ID
+  - If `current_task` is non-null: preserve existing value (task in progress)
   - Read-modify-write pattern used

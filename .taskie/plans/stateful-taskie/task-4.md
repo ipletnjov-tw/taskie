@@ -36,12 +36,13 @@ Update `new-plan.md`, `continue-plan.md`, and `create-tasks.md` with state.json 
   - Routes correctly for all `next_phase` values listed in the plan
   - Two-level crash recovery heuristic for review phases:
     - Checks `phase` for post-review → just stop
-    - Checks artifact completeness for plan-review (plan.md exists + >50 lines or has `## Overview`)
-    - Checks artifact completeness for tasks-review (tasks.md exists + has table rows)
-    - Checks subtask completion for code-review/all-code-review
+    - Checks artifact completeness for plan-review (plan.md exists and has `## Overview` heading OR >50 lines — either condition suffices)
+    - Checks artifact completeness for tasks-review (tasks.md exists and has at least one line starting with `|`)
+    - Checks subtask completion for code-review/all-code-review (reads `task-{current_task}.md` from state.json and verifies all subtask status markers are complete)
   - Catch-all for `next_phase: null` with review/post-review phases → inform user, ask
   - Falls back to git history ONLY when `state.json` doesn't exist
-  - Handles `next_phase: "complete"` → set `phase: "complete"`, inform user
+  - Handles `next_phase: "complete"` → set `phase: "complete"`, `next_phase: null`, inform user all tasks are done
+  - Routes correctly for both `complete-task` and `complete-task-tdd` variants when either is the `next_phase` value
 
 ### Subtask 4.3: Update `create-tasks.md` to write `state.json`
 - **Short description**: Update `taskie/actions/create-tasks.md` to write `state.json` after creating tasks: set `phase: "create-tasks"`, `current_task: null`, `next_phase: "tasks-review"`, `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`. Preserve `max_reviews` and `tdd` from existing state (read-modify-write). Add `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` reference (currently missing from this action).
@@ -58,3 +59,4 @@ Update `new-plan.md`, `continue-plan.md`, and `create-tasks.md` with state.json 
   - Preserves `max_reviews` and `tdd` from existing state
   - Always sets `next_phase: "tasks-review"` (auto-triggers tasks review)
   - Ground-rules reference added at top of action
+  - Uses atomic write pattern (temp file + mv) for state.json updates
