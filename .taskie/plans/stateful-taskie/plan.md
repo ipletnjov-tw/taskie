@@ -41,10 +41,10 @@ The state file lives at `.taskie/plans/{plan-id}/state.json` and reflects ONLY t
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `max_reviews` | number | Maximum review iterations per task per reviewable phase type (default 8). Applies globally to all tasks. `phase_iteration` resets to 1 when `current_task` changes. |
+| `max_reviews` | number | Maximum review iterations per task per reviewable phase type (default 8). Applies globally to all tasks. |
 | `current_task` | string\|null | Current task ID (e.g. `"3"`), null during planning phases |
 | `phase` | string | Current action/phase: `"new-plan"`, `"plan-review"`, `"post-plan-review"`, `"create-tasks"`, `"tasks-review"`, `"post-tasks-review"`, `"next-task"`, `"next-task-tdd"`, `"continue-task"`, `"code-review"`, `"post-code-review"`, `"all-code-review"`, `"post-all-code-review"`, `"complete"` |
-| `phase_iteration` | number\|null | Review iteration number (1-based). Only set during review/post-review phases. Null otherwise. Resets to 1 when `current_task` changes. |
+| `phase_iteration` | number\|null | Review iteration counter (0-based). Initialized to 0 when entering a review cycle. The hook increments it BEFORE running each review (so the first review runs at iteration 1, written to `*-review-1.md`). The hook checks `phase_iteration < max_reviews` AFTER incrementing — if false, the review is skipped and the stop is allowed. This yields exactly `max_reviews` reviews. Null during non-review phases. Resets to 0 when `current_task` changes or a new review cycle begins. |
 | `next_phase` | string\|null | The phase to transition to after the current one completes. Null when no automated follow-up is expected (e.g. standalone `next-task` without review automation, or `phase` is `"complete"`). |
 | `review_model` | string | Model alias for the next review: `"opus"` or `"sonnet"`. Passed directly to the `claude` CLI as `--model opus` or `--model sonnet`, which resolve to the latest version of each model. Alternates after each review. Starts with `"opus"`. |
 
@@ -66,24 +66,24 @@ The high-level stage of the plan can be derived from `phase` — no separate fie
 
 The state file follows these transition paths:
 
-**Planning flow (triggered by `complete-task` or `complete-task-tdd`):**
+**Planning flow (auto-triggered after `new-plan`):**
 ```
 new-plan → [STOP HOOK] plan-review (iter 1, opus) → [BLOCK] post-plan-review → [STOP HOOK] plan-review (iter 2, sonnet) → ... → create-tasks
 ```
 
-**Task creation flow (continues automatically from planning):**
+**Task creation flow (auto-triggered after `create-tasks`):**
 ```
 create-tasks → [STOP HOOK] tasks-review (iter 1, opus) → [BLOCK] post-tasks-review → [STOP HOOK] tasks-review (iter 2, sonnet) → ... → next-task
 ```
 
 **Implementation flow (complete-task):**
 ```
-next-task → [STOP HOOK] code-review (iter 1, opus) → [BLOCK] post-code-review → [STOP HOOK] code-review (iter 2, sonnet) → ... → next-task (next task, iter resets) → ... → complete
+next-task → [STOP HOOK] code-review (iter 1, opus) → [BLOCK] post-code-review → [STOP HOOK] code-review (iter 2, sonnet) → ... → next-task (next task, iter resets) → ... → [STOP HOOK] all-code-review (iter 1, opus) → [BLOCK] post-all-code-review → ... → complete
 ```
 
 **Implementation flow (complete-task-tdd):**
 ```
-next-task-tdd → [STOP HOOK] code-review (iter 1, opus) → [BLOCK] post-code-review → [STOP HOOK] code-review (iter 2, sonnet) → ... → next-task-tdd (next task, iter resets) → ... → complete
+next-task-tdd → [STOP HOOK] code-review (iter 1, opus) → [BLOCK] post-code-review → [STOP HOOK] code-review (iter 2, sonnet) → ... → next-task-tdd (next task, iter resets) → ... → [STOP HOOK] all-code-review (iter 1, opus) → [BLOCK] post-all-code-review → ... → complete
 ```
 
 **Interrupted task resumption:**
@@ -92,12 +92,17 @@ continue-task → [same as next-task from this point: code-review → post-code-
 ```
 
 **Standalone commands (no hook automation):**
-When invoked directly (not via `complete-task`/`complete-task-tdd`), these commands set `next_phase: null`:
+When invoked directly, these commands set `next_phase: null`:
 - `next-task` / `next-task-tdd` — implements the task, then stops. No auto-review.
 - `code-review` — performs review, then stops. No auto post-review.
 - `plan-review` / `tasks-review` — performs review, then stops.
 
-Only `complete-task` and `complete-task-tdd` set `next_phase` to review phases, enabling the hook automation loop.
+**Commands that ALWAYS auto-trigger reviews:**
+- `new-plan` — always sets `next_phase: "plan-review"` (there's no scenario where a plan shouldn't be reviewed)
+- `create-tasks` — always sets `next_phase: "tasks-review"` (same rationale)
+- `complete-task` / `complete-task-tdd` — sets `next_phase: "code-review"` after implementation
+
+The "standalone = null" rule only applies to implementation and review commands where the user might intentionally want to skip the automation loop.
 
 **Review exit conditions** (transition out of review loop):
 - All reviews pass (no issues found) → advance to next phase
@@ -109,7 +114,8 @@ Only `complete-task` and `complete-task-tdd` set `next_phase` to review phases, 
 - After plan review passes → auto-advance to `create-tasks` (no user intervention needed)
 - After tasks review passes → auto-advance to first `next-task` (no user intervention needed)
 - After code review passes for a task → auto-advance to next task's implementation (no user intervention)
-- After all tasks complete → set `phase: "complete"`, `next_phase: null`, agent stops
+- After last task's code review passes → auto-advance to `all-code-review` (final cross-task review)
+- After all-code-review passes → set `phase: "complete"`, `next_phase: null`, agent stops
 
 ## Hook Design
 
@@ -117,18 +123,26 @@ Only `complete-task` and `complete-task-tdd` set `next_phase` to review phases, 
 
 The existing `validate-ground-rules.sh` and the new auto-review logic will be combined into a single Stop hook (`hooks/stop-hook.sh`). This is necessary because Claude Code runs all hooks for the same event **in parallel** — there is no sequential ordering. A single hook avoids race conditions between parallel hooks and ensures validation runs only after the review decision is made.
 
+The hook resolves the plugin root relative to its own location:
+```bash
+PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+```
+This works because the hook is at `hooks/stop-hook.sh` and actions/ground-rules are one directory up. The resolved absolute path is used in the `claude` CLI prompt strings.
+
 The unified hook follows this logic:
 
 1. Check `stop_hook_active` — if true, approve immediately (prevent infinite loops)
 2. Check if `.taskie/plans` exists — if not, approve (not using Taskie)
 3. Find the most recently modified plan directory
 4. Read `state.json` — if missing or malformed, fall through to validation only
-5. Check if `next_phase` is a review phase (`plan-review`, `tasks-review`, `code-review`, `all-code-review`) AND `phase_iteration` < `max_reviews`:
-   a. Invoke `claude` CLI to perform the review (see CLI invocation below)
-   b. Verify the review file was written to disk
-   c. Update `state.json`: set `phase` to the review phase, increment `phase_iteration`, toggle `review_model`, set `next_phase` to the corresponding post-review phase
-   d. Return a **block** decision with a precise instruction message (see block message template below)
-6. If `next_phase` is NOT a review phase, or `phase_iteration` >= `max_reviews`, or `next_phase` is null:
+5. Check if `next_phase` is a review phase (`plan-review`, `tasks-review`, `code-review`, `all-code-review`):
+   a. Increment `phase_iteration` (from 0 to 1 for the first review)
+   b. Check if `phase_iteration` <= `max_reviews` — if NOT, skip to step 6 (limit reached)
+   c. Invoke `claude` CLI to perform the review (see CLI invocation below). The review file is named `*-review-${phase_iteration}.md`.
+   d. Verify the review file was written to disk. If not (CLI failure), log warning and skip to step 6.
+   e. Update `state.json`: set `phase` to the review phase, write the incremented `phase_iteration`, toggle `review_model`, set `next_phase` to the corresponding post-review phase
+   f. Return a **block** decision with a precise instruction message (see block message template below)
+6. If `next_phase` is NOT a review phase, or `phase_iteration` > `max_reviews`, or `next_phase` is null:
    a. Run the existing plan structure validation (rules 1-7 from the current `validate-ground-rules.sh`)
    b. If validation passes, approve the stop
    c. If validation fails, block with the validation error
@@ -141,7 +155,6 @@ The hook script invokes the `claude` CLI like this:
 claude --print \
        --model "${REVIEW_MODEL}" \
        --dangerously-skip-permissions \
-       --allowedTools "Read Grep Glob Write Bash" \
        "Read the ground rules in ${PLUGIN_ROOT}/ground-rules.md, then read the plan in .taskie/plans/${PLAN_ID}/plan.md, then read .taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}.md. Now perform the code review action described in ${PLUGIN_ROOT}/actions/code-review.md for this task. Write your review to .taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}-review-${ITERATION}.md. Be very critical." \
        > /dev/null 2>&1
 ```
@@ -149,8 +162,7 @@ claude --print \
 Key flags:
 - `--print` / `-p`: Non-interactive mode. The CLI performs the review using tools and exits.
 - `--model "${REVIEW_MODEL}"`: Uses `opus` or `sonnet` alias, which the CLI resolves to the latest version automatically. No manual model ID updates needed.
-- `--dangerously-skip-permissions`: Required because the subprocess needs to read files, write the review file, and run must-run commands without interactive permission prompts. **Security note**: the subprocess can run arbitrary commands — this is acceptable because it runs in the same project directory as the main agent with the same trust level.
-- `--allowedTools "Read Grep Glob Write Bash"`: Limits available tools to what's needed for a review.
+- `--dangerously-skip-permissions`: Required because the subprocess needs to read files, write the review file, and run must-run commands without interactive permission prompts. All tools are available. **Security note**: the subprocess can run arbitrary commands — this is acceptable because it runs in the same project directory as the main agent with the same trust level.
 - Stdout redirected to `/dev/null` because the CLI writes the review file to disk via its Write tool (not stdout).
 
 The prompt instructs the CLI to read the ground rules, plan, and task file before reviewing — this provides the context that a fresh session lacks.
@@ -191,31 +203,41 @@ The auto-review hook timeout must be significantly longer than the validation-on
 
 ### Automation Boundary Rule
 
-The critical distinction between standalone commands and automated workflows:
+Commands fall into two categories:
 
-- **`complete-task`** and **`complete-task-tdd`** are the ONLY entry points that enable hook automation. They set `next_phase` to review phases, which the Stop hook detects and acts on.
-- **All other commands** (`next-task`, `code-review`, `plan-review`, etc.) when invoked standalone set `next_phase: null`. The hook sees null and allows the stop — no automation.
+**Always auto-trigger reviews** (set `next_phase` to a review phase):
+- `/taskie:new-plan` → creates plan, then auto plan-review loop via hook
+- `/taskie:create-tasks` → creates tasks, then auto tasks-review loop via hook
+- `/taskie:complete-task` → implements one task, then auto code-review loop via hook
+- `/taskie:complete-task-tdd` → same as above but with TDD
 
-This means:
-- `/taskie:next-task` → implements one task, stops. No auto-review.
-- `/taskie:complete-task` → implements one task, then auto-review loop kicks in via hook.
+**Standalone commands** (set `next_phase: null`, no hook automation):
+- `/taskie:next-task` / `/taskie:next-task-tdd` → implements one task, stops. No auto-review.
 - `/taskie:code-review` → performs one review, stops. No auto post-review.
+- `/taskie:plan-review` / `/taskie:tasks-review` → performs one review, stops.
 
 ### Modified Actions
 
-1. **`continue-plan.md`** — Major rewrite. Instead of inspecting git history and task file status, it now reads `state.json` and routes directly based on `phase`:
-   - `phase` = `"continue-task"` → execute `continue-task.md`
-   - `phase` = `"post-code-review"` → execute `post-code-review.md`
-   - `phase` = `"post-plan-review"` → execute `post-plan-review.md`
-   - `phase` = `"post-tasks-review"` → execute `post-tasks-review.md`
-   - `phase` = `"next-task"` or `"next-task-tdd"` with task completed → execute next task
-   - `phase` = `"code-review"` → execute `code-review.md`
+1. **`continue-plan.md`** — Major rewrite. Instead of inspecting git history and task file status, it now reads `state.json` and routes based on `next_phase` first (what should happen next), falling back to `phase` (what was last done) only when `next_phase` is null:
+
+   **When `next_phase` is non-null** (interrupted automated workflow — this is the primary routing path):
+   - `next_phase` = `"post-code-review"` → execute `post-code-review.md` (review file already on disk)
+   - `next_phase` = `"post-plan-review"` → execute `post-plan-review.md`
+   - `next_phase` = `"post-tasks-review"` → execute `post-tasks-review.md`
+   - `next_phase` = `"post-all-code-review"` → execute `post-all-code-review.md`
+   - `next_phase` = `"code-review"` / `"plan-review"` / `"tasks-review"` / `"all-code-review"` → the hook will handle this on the next stop, so execute `continue-task.md` or inform the agent to complete its current work and stop
+   - `next_phase` = `"next-task"` / `"next-task-tdd"` → execute the next task
+   - `next_phase` = `"create-tasks"` → execute `create-tasks.md`
+
+   **When `next_phase` is null** (standalone command was interrupted):
+   - `phase` = `"continue-task"` or `"next-task"` or `"next-task-tdd"` → execute `continue-task.md`
    - `phase` = `"complete"` → inform user all tasks are done
-   - Falls back to git history only if `state.json` doesn't exist (backwards compatibility with pre-stateful plans).
 
-2. **`new-plan.md`** — After creating `plan.md`, initializes `state.json` with `phase: "new-plan"`, `next_phase: null` (standalone) or `next_phase: "plan-review"` (only when invoked via `complete-task` workflow).
+   **Falls back to git history** only if `state.json` doesn't exist (backwards compatibility with pre-stateful plans).
 
-3. **`create-tasks.md`** — After creating tasks, updates `state.json` with `phase: "create-tasks"`. Sets `next_phase: "tasks-review"` if in an automated workflow, `null` otherwise. Also adds `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` reference (currently missing from this action).
+2. **`new-plan.md`** — After creating `plan.md`, initializes `state.json` with `phase: "new-plan"`, `next_phase: "plan-review"`, `phase_iteration: 0`, `review_model: "opus"`. Always auto-triggers plan review — there's no scenario where a plan shouldn't be reviewed.
+
+3. **`create-tasks.md`** — After creating tasks, updates `state.json` with `phase: "create-tasks"`, `next_phase: "tasks-review"`, `phase_iteration: 0`, `review_model: "opus"`. Always auto-triggers tasks review. Also adds `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` reference (currently missing from this action).
 
 4. **`next-task.md`** / **`next-task-tdd.md`** — After implementation, updates `state.json` with `phase: "next-task"` (or `"next-task-tdd"`), sets `current_task`, sets `next_phase: null`. These are standalone commands — they do NOT trigger auto-review.
 
@@ -431,15 +453,14 @@ Tests that the hook invokes the `claude` CLI with the correct flags and argument
 | 2 | Model flag: sonnet | `review_model: "sonnet"` | `--model sonnet` appears in args |
 | 3 | Permissions bypass | any review trigger | `--dangerously-skip-permissions` in args |
 | 4 | Print flag | any review trigger | `--print` in args |
-| 5 | Allowed tools | any review trigger | `--allowedTools` with `Read Grep Glob Write Bash` in args |
-| 6 | Code review prompt contains task reference | code review for task 3 | prompt contains `task-3.md` and `task-3-review-` |
-| 7 | Plan review prompt contains plan reference | plan review | prompt contains `plan.md` and `plan-review-` |
-| 8 | Tasks review prompt contains tasks reference | tasks review | prompt contains `tasks.md` and `tasks-review-` |
-| 9 | Review file written to correct path | code review for task 2, iteration 3 | file `task-2-review-3.md` exists in plan directory |
-| 10 | Claude CLI not on PATH | remove mock from PATH | hook approves (falls through to validation), warning logged to stderr |
-| 11 | Claude CLI fails (exit 1) | `MOCK_CLAUDE_EXIT_CODE=1` | hook approves (falls through to validation), warning logged |
-| 12 | Claude CLI fails to write review file | `MOCK_CLAUDE_REVIEW_DIR` not set (mock writes nothing) | hook approves (falls through to validation), warning logged |
-| 13 | Claude CLI timeout | `MOCK_CLAUDE_DELAY=5` with hook timeout shorter | hook approves (falls through), warning logged |
+| 5 | Code review prompt contains task reference | code review for task 3 | prompt contains `task-3.md` and `task-3-review-` |
+| 6 | Plan review prompt contains plan reference | plan review | prompt contains `plan.md` and `plan-review-` |
+| 7 | Tasks review prompt contains tasks reference | tasks review | prompt contains `tasks.md` and `tasks-review-` |
+| 8 | Review file written to correct path | code review for task 2, iteration 3 | file `task-2-review-3.md` exists in plan directory |
+| 9 | Claude CLI not on PATH | remove mock from PATH | hook approves (falls through to validation), warning logged to stderr |
+| 10 | Claude CLI fails (exit 1) | `MOCK_CLAUDE_EXIT_CODE=1` | hook approves (falls through to validation), warning logged |
+| 11 | Claude CLI fails to write review file | `MOCK_CLAUDE_REVIEW_DIR` not set (mock writes nothing) | hook approves (falls through to validation), warning logged |
+| 12 | Claude CLI timeout | `MOCK_CLAUDE_DELAY=5` with hook timeout shorter | hook approves (falls through), warning logged |
 
 ### Test Suite 5: Block Message Templates (part of test-stop-hook-auto-review.sh)
 
@@ -463,7 +484,7 @@ Tests that the `reason` in the block decision contains the correct information f
 | 3 | Phase iteration is null (non-review phase, standalone) | `{phase: "next-task", phase_iteration: null, next_phase: null}` | approve (standalone, no review) |
 | 4 | review_model is unexpected value | `{..., review_model: "haiku"}` | hook passes it to `--model haiku` (CLI handles validation) |
 | 5 | Concurrent plan creation | state.json exists but plan.md doesn't (user just initialized) | validation blocks for missing plan.md (rule 1) |
-| 6 | Combined: auto-review + validation failure | `next_phase: "code-review"` but plan dir has nested files | hook runs review first, then validation catches nested files → block with validation error |
+| 6 | Auto-review takes precedence over validation | `next_phase: "code-review"` but plan dir has nested files | hook runs review and blocks for post-review (validation is NOT reached — it only runs when the hook falls through to step 6). Nested files would be caught on a subsequent stop when `next_phase` is no longer a review phase. |
 | 7 | Empty plan directory | `.taskie/plans/` exists but no plan subdirectories | approve (no plan to validate) |
 | 8 | max_reviews is 0 | `{..., max_reviews: 0, phase_iteration: 0, next_phase: "code-review"}` | approve immediately (0 means no reviews) |
 | 9 | Backwards compatibility: no state.json, valid plan | plan.md + tasks.md, no state.json | approve (validation only, no auto-review) |
@@ -503,3 +524,5 @@ No real API calls are ever made during testing. The mock `claude` script is the 
 6. **Crash between hook block and agent post-review**: If the main agent crashes after the hook blocks the stop but before the agent completes post-review, `state.json` will show `phase: "<review-type>"` with `next_phase: "post-<review-type>"`. When the user resumes with `continue-plan`, it reads this state and routes to the post-review action. The review file is already on disk (written by the hook's subprocess), so the agent can pick up where it left off. This is a safe recovery path.
 
 7. **Destructive reviews**: There is no rollback mechanism if a review suggests destructive changes. The `max_reviews` limit is the safety valve — after 8 iterations, the agent stops and requests human input. Each subtask completion is committed to git, so `git revert` or `git reset` can undo damage. The post-review action should be instructed to exercise judgment and skip suggestions that would remove working functionality.
+
+8. **User escape hatch**: To break the auto-review loop mid-workflow, the user can edit `state.json` and set `"next_phase": null`. The hook will see null and allow the stop on the next attempt. Alternatively, setting `"max_reviews": 0` disables all reviews. These options should be mentioned in the block message template as a brief note, e.g.: `"(To stop the review loop, set next_phase to null in state.json.)"`
