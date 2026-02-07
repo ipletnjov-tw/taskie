@@ -227,12 +227,12 @@ For **all-code-reviews**:
 
 All four prompts use the same `--output-format json --json-schema "$VERDICT_SCHEMA"` flags. The verdict is returned as structured JSON on stdout — the prompt no longer needs to instruct the model to include a VERDICT line in the markdown. The `--json-schema` flag constrains the model's final response to `{"verdict": "PASS"}` or `{"verdict": "FAIL"}`, which is schema-validated by the CLI itself.
 
-**Note:** `TASK_FILE_LIST` is constructed by the hook from `tasks.md` — it extracts task IDs from the table rows and expands them to `.taskie/plans/${PLAN_ID}/task-{N}.md` paths. This avoids the `task-*.md` glob which would also match review and post-review files (e.g. `task-1-review-2.md`, `task-1-post-review-1.md`), potentially overloading the CLI subprocess context window. The hook builds this list with:
+**Note:** `TASK_FILE_LIST` is constructed by the hook from `tasks.md` — it extracts numeric task IDs from the Id column (column 2) of the table and expands them to `.taskie/plans/${PLAN_ID}/task-{N}.md` paths. This avoids the `task-*.md` glob which would also match review and post-review files (e.g. `task-1-review-2.md`, `task-1-post-review-1.md`), potentially overloading the CLI subprocess context window. The hook builds this list with:
 ```bash
-TASK_FILE_LIST=$(grep '^|' ".taskie/plans/${PLAN_ID}/tasks.md" | grep -oE 'task-[0-9]+\.md' | sort -u | sed "s|^|.taskie/plans/${PLAN_ID}/|" | tr '\n' ' ')
+TASK_FILE_LIST=$(grep '^|' ".taskie/plans/${PLAN_ID}/tasks.md" | tail -n +3 | awk -F'|' '{gsub(/[[:space:]]/, "", $2); if ($2 ~ /^[0-9]+$/) printf ".taskie/plans/'${PLAN_ID}'/task-%s.md ", $2}')
 ```
 
-The first `grep '^|'` restricts to table rows only (lines starting with `|`), avoiding false positives from prose descriptions like "See task-99.md for the legacy approach". The second `grep -oE` uses POSIX Extended Regex instead of Perl-compatible `-oP`, ensuring portability across Linux and macOS.
+The `grep '^|'` restricts to table rows only (lines starting with `|`). The `tail -n +3` skips the header and separator rows. The `awk` command splits on `|`, extracts column 2 (the Id column), strips whitespace, validates it's numeric, and constructs the full file path. This approach works with the current `tasks.md` format where task IDs are numeric values in the Id column, not literal filename strings.
 
 **Empty list handling**: If `TASK_FILE_LIST` is empty (e.g. `tasks.md` doesn't exist, is empty, or has no task references), the hook logs a warning and skips the review (approves the stop). For **code-review** of a single task, the hook uses `current_task` from `state.json` directly to construct the file path (`task-${current_task}.md`) rather than parsing `tasks.md` — the task ID is already known. `TASK_FILE_LIST` is only needed for tasks-review and all-code-review prompts.
 
