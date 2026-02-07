@@ -43,13 +43,19 @@ For review phases, use crash recovery to determine if the review was interrupted
 
 - `"code-review"`:
   1. Check if `phase` field is `"post-code-review"` → Stop and inform user they were addressing code review feedback. Ask if they want to continue post-review or trigger a new review.
-  2. Read `current_task` from state.json. If `task-{current_task}.md` doesn't exist, inform user and ask what to do.
-  3. If task file exists, count subtasks with status "completed" vs total subtasks. If >50% complete, assume task implementation was in progress but incomplete → execute `@${CLAUDE_PLUGIN_ROOT}/actions/continue-task.md`. If ≥90% complete, assume task is done → execute `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`.
-  4. If ambiguous, inform user and ask whether to continue implementation or start review.
+  2. Read `current_task` from state.json. If `current_task` is null or `task-{current_task}.md` doesn't exist, inform user that current task is invalid and ask which task to work on.
+  3. If task file exists, count subtasks: completed_count = subtasks with status exactly "completed"; total_count = all subtasks regardless of status. Calculate completion_pct = (completed_count / total_count) * 100.
+  4. Route based on completion percentage:
+     - If completion_pct ≥ 90% → Assume task is done, execute `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`
+     - If 50% < completion_pct < 90% → Assume task in progress, execute `@${CLAUDE_PLUGIN_ROOT}/actions/continue-task.md`
+     - If completion_pct ≤ 50% OR calculation is ambiguous (e.g., 0 total subtasks) → INFORM USER of the ambiguity and ASK whether to continue implementation or start review
 
 - `"all-code-review"`:
   1. Check if `phase` field is `"post-all-code-review"` → Stop and inform user they were addressing all-code review feedback. Ask if they want to continue post-review or trigger a new review.
-  2. Count tasks in `tasks.md` with status "done" vs total tasks. If ≥90% done, assume ready for review → execute `@${CLAUDE_PLUGIN_ROOT}/actions/all-code-review.md`. Otherwise, inform user and ask what to do (continue implementation or force review anyway).
+  2. Count tasks in `tasks.md`: done_count = tasks with status exactly "done"; active_count = tasks with status "pending" or "done" (exclude "cancelled", "postponed"). Calculate done_pct = (done_count / active_count) * 100.
+  3. Route based on done percentage:
+     - If done_pct ≥ 90% → Assume ready for review, execute `@${CLAUDE_PLUGIN_ROOT}/actions/all-code-review.md`
+     - If done_pct < 90% OR calculation is ambiguous → INFORM USER that X out of Y tasks are done and ASK whether to continue implementation or start review anyway
 
 #### Advance targets (action execution)
 - `"create-tasks"` → Execute `@${CLAUDE_PLUGIN_ROOT}/actions/create-tasks.md`

@@ -39,7 +39,7 @@ After completing implementation, you MUST update the workflow state file at `.ta
    - `max_reviews`: preserve from existing state
 3. Write the updated state atomically using a temp file: write to a temporary file first, then `mv` to `state.json`
 
-Example bash command for atomic write:
+Example bash command for atomic write (replace {task-id} with the actual task ID, e.g., "3"):
 ```bash
 TEMP_STATE=$(mktemp)
 MAX_REVIEWS=$(jq -r '.max_reviews // 8' state.json)
