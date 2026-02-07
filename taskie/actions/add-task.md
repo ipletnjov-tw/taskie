@@ -36,4 +36,4 @@ After creating the new task and task file, update the workflow state file at `.t
 3. Preserve all other fields unchanged: `phase`, `next_phase`, `phase_iteration`, `max_reviews`, `review_model`, `consecutive_clean`, `tdd`
 4. Write the updated state atomically using a temp file: write to a temporary file first, then `mv` to `state.json`
 
-Remember, you MUST follow the `.taskie/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+Remember, you MUST follow the `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.

@@ -9,6 +9,7 @@ If you don't know what the `{current-plan-dir}` is, use git history to find out 
 First, check if `.taskie/plans/{current-plan-dir}/state.json` exists:
 
 - **If it exists**: Read the state file and proceed to Step 2 (state-based routing)
+- **If it exists but is CORRUPTED or invalid JSON**: Restore from git history (`git show HEAD:path/to/state.json`) or manually recreate with sane defaults. If unable to recover, fall back to Step 3 (git-based routing).
 - **If it does NOT exist**: This is a plan created before the stateful workflow. Skip to Step 3 (git-based routing fallback)
 
 ## Step 2: State-based routing (primary path)
@@ -25,34 +26,40 @@ If `next_phase` is **not null**, route as follows:
 - `"post-code-review"` → Execute `@${CLAUDE_PLUGIN_ROOT}/actions/post-code-review.md`
 - `"post-all-code-review"` → Execute `@${CLAUDE_PLUGIN_ROOT}/actions/post-all-code-review.md`
 
-#### Review phases (crash recovery with two-level heuristic)
-For review phases, use crash recovery to determine if the review was interrupted mid-execution:
+#### Review phases (crash recovery with heuristic detection)
+For review phases, use crash recovery to determine if the review was interrupted mid-execution.
+
+**Important**: These heuristics are best-effort and may misclassify edge cases. If the recovery route seems incorrect, manually edit `state.json` to set the correct `next_phase`.
 
 - `"plan-review"`:
-  1. Check if `phase` field is `"post-plan-review"` → Just stop, inform user they were in post-review
-  2. Check if `plan.md` exists AND (has `## Overview` heading OR >50 lines) → Review artifact complete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/plan-review.md`
-  3. Otherwise → Plan incomplete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/new-plan.md`
+  1. Check if `phase` field is `"post-plan-review"` → Stop and inform user they were addressing plan review feedback. Ask if they want to continue post-review or trigger a new review.
+  2. Check if `plan.md` exists AND has at least 50 lines → Likely complete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/plan-review.md`
+  3. Otherwise → Plan likely incomplete or just started, execute `@${CLAUDE_PLUGIN_ROOT}/actions/new-plan.md`
 
 - `"tasks-review"`:
-  1. Check if `phase` field is `"post-tasks-review"` → Just stop, inform user they were in post-review
-  2. Check if `tasks.md` exists and has at least one line starting with `|` → Tasks artifact complete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/tasks-review.md`
-  3. Otherwise → Tasks incomplete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/create-tasks.md`
+  1. Check if `phase` field is `"post-tasks-review"` → Stop and inform user they were addressing tasks review feedback. Ask if they want to continue post-review or trigger a new review.
+  2. Check if `tasks.md` exists and has at least 3 lines starting with `|` → Tasks likely complete (header + separator + at least one task), execute `@${CLAUDE_PLUGIN_ROOT}/actions/tasks-review.md`
+  3. Otherwise → Tasks likely incomplete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/create-tasks.md`
 
 - `"code-review"`:
-  1. Check if `phase` field is `"post-code-review"` → Just stop, inform user they were in post-review
-  2. Read `current_task` from state.json, then check if `task-{current_task}.md` exists and all subtask status markers show complete (no "pending" or "in-progress") → Implementation complete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`
-  3. Otherwise → Implementation incomplete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/continue-task.md`
+  1. Check if `phase` field is `"post-code-review"` → Stop and inform user they were addressing code review feedback. Ask if they want to continue post-review or trigger a new review.
+  2. Read `current_task` from state.json. If `task-{current_task}.md` doesn't exist, inform user and ask what to do.
+  3. If task file exists, count subtasks with status "completed" vs total subtasks. If >50% complete, assume task implementation was in progress but incomplete → execute `@${CLAUDE_PLUGIN_ROOT}/actions/continue-task.md`. If ≥90% complete, assume task is done → execute `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`.
+  4. If ambiguous, inform user and ask whether to continue implementation or start review.
 
 - `"all-code-review"`:
-  1. Check if `phase` field is `"post-all-code-review"` → Just stop, inform user they were in post-review
-  2. Check if all tasks in `tasks.md` are marked "done" → All implementations complete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/all-code-review.md`
-  3. Otherwise → Implementations incomplete, inform user and ask what to do
+  1. Check if `phase` field is `"post-all-code-review"` → Stop and inform user they were addressing all-code review feedback. Ask if they want to continue post-review or trigger a new review.
+  2. Count tasks in `tasks.md` with status "done" vs total tasks. If ≥90% done, assume ready for review → execute `@${CLAUDE_PLUGIN_ROOT}/actions/all-code-review.md`. Otherwise, inform user and ask what to do (continue implementation or force review anyway).
 
 #### Advance targets (action execution)
 - `"create-tasks"` → Execute `@${CLAUDE_PLUGIN_ROOT}/actions/create-tasks.md`
 - `"complete-task"` → Execute `@${CLAUDE_PLUGIN_ROOT}/actions/complete-task.md` (it will determine the next pending task from `tasks.md`)
 - `"complete-task-tdd"` → Execute `@${CLAUDE_PLUGIN_ROOT}/actions/complete-task-tdd.md` (it will determine the next pending task from `tasks.md`)
-- `"complete"` → Set `phase: "complete"`, `next_phase: null` in state.json, inform user all tasks are done
+- `"complete"` → Implementation is complete. Set `phase: "complete"`, `next_phase: null` in state.json. Inform the user that all tasks are done and suggest next steps:
+  - Review the final implementation
+  - Run final integration tests
+  - Create a pull request if working in a feature branch
+  - Deploy if ready for production
 
 ### 2.2: Route based on `phase` (when `next_phase` is null)
 

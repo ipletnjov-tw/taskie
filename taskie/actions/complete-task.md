@@ -42,6 +42,7 @@ After completing implementation, you MUST update the workflow state file at `.ta
 Example bash command for atomic write:
 ```bash
 TEMP_STATE=$(mktemp)
+MAX_REVIEWS=$(jq -r '.max_reviews // 8' state.json)
 jq --arg phase "complete-task" \
    --arg current_task "{task-id}" \
    --arg next_phase "code-review" \
@@ -49,7 +50,8 @@ jq --arg phase "complete-task" \
    --arg review_model "opus" \
    --argjson consecutive_clean 0 \
    --argjson tdd false \
-   '.phase = $phase | .current_task = $current_task | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .tdd = $tdd' \
+   --argjson max_reviews "$MAX_REVIEWS" \
+   '.phase = $phase | .current_task = $current_task | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .tdd = $tdd | .max_reviews = $max_reviews' \
    state.json > "$TEMP_STATE"
 mv "$TEMP_STATE" state.json
 ```

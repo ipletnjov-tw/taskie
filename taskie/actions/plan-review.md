@@ -4,7 +4,11 @@ Perform a thorough review of the proposed implementation plan defined in `.taski
 
 If you don't know what the `{current-plan-dir}` is, use git history to find out which plan was modified most recently.
 
-Document the results of your review in `.taskie/plans/{current-plan-dir}/plan-review-{review-id}.md`.
+Document the results of your review in `.taskie/plans/{current-plan-dir}/plan-review-{iteration}.md`.
+
+**Review file naming**:
+- For AUTOMATED reviews (invoked by hook): use the `phase_iteration` value from state.json as the iteration number (e.g., `plan-review-1.md`, `plan-review-2.md`)
+- For STANDALONE reviews (manual invocation): use an incrementing number based on existing review files in the directory
 
 After completing the review, check the workflow context to determine if this is a standalone or automated review:
 

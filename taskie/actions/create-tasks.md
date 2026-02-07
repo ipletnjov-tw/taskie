@@ -47,12 +47,12 @@ Example bash command for atomic write:
 ```bash
 TEMP_STATE=$(mktemp)
 jq --arg phase "create-tasks" \
-   --arg current_task "null" \
+   --argjson current_task null \
    --arg next_phase "tasks-review" \
    --argjson phase_iteration 0 \
    --arg review_model "opus" \
    --argjson consecutive_clean 0 \
-   '.phase = $phase | .current_task = ($current_task | if . == "null" then null else . end) | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean' \
+   '.phase = $phase | .current_task = $current_task | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean' \
    state.json > "$TEMP_STATE"
 mv "$TEMP_STATE" state.json
 ```

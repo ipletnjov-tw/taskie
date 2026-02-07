@@ -1,6 +1,10 @@
 # Start Next Task Implementation (TDD)
 
-Proceed to the next task using strict Test-Driven Development. You MUST implement ONLY ONE task, including ALL of its subtasks. You MUST NOT implement more than ONE task. You MUST run all must-run commands for EVERY subtask to verify completion.
+Proceed to the next task using strict Test-Driven Development.
+
+**Task selection**: Read `.taskie/plans/{current-plan-dir}/tasks.md` and identify the first task with status "pending" (by ascending task ID). This is the task you will implement.
+
+You MUST implement ONLY ONE task, including ALL of its subtasks. You MUST NOT implement more than ONE task. You MUST run all must-run commands for EVERY subtask to verify completion.
 
 For EACH subtask, follow this cycle:
 

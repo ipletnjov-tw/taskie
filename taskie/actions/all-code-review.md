@@ -4,7 +4,13 @@ Perform a thorough review of ALL code implemented across ALL tasks (completed or
 
 Double check ALL the must-run commands from all tasks by running them and analyzing their results.
 
-Document the results of your review in `.taskie/plans/{current-plan-dir}/all-code-review-{review-id}.md`. If you don't know what the `{current-plan-dir}` is, use git history to find out which plan was modified most recently.
+Document the results of your review in `.taskie/plans/{current-plan-dir}/all-code-review-{iteration}.md`.
+
+**Review file naming**:
+- For AUTOMATED reviews (invoked by hook): use the `phase_iteration` value from state.json as the iteration number (e.g., `all-code-review-1.md`, `all-code-review-2.md`)
+- For STANDALONE reviews (manual invocation): use an incrementing number based on existing review files in the directory
+
+If you don't know what the `{current-plan-dir}` is, use git history to find out which plan was modified most recently.
 
 After completing the review, check the workflow context to determine if this is a standalone or automated review:
 
