@@ -41,16 +41,7 @@ fi
 print_header
 
 case "$TEST_SUITE" in
-    all)
-        echo "Running all hook tests..."
-        for test_file in "$SCRIPT_DIR"/tests/hooks/test-*.sh; do
-            if [ -f "$test_file" ]; then
-                echo "Running $(basename "$test_file")..."
-                bash "$test_file" || exit 1
-            fi
-        done
-        ;;
-    hooks)
+    all|hooks)
         echo "Running all hook tests..."
         for test_file in "$SCRIPT_DIR"/tests/hooks/test-*.sh; do
             if [ -f "$test_file" ]; then

@@ -9,14 +9,14 @@ FAIL_COUNT=0
 pass() {
     local message="$1"
     echo "✓ PASS: $message"
-    ((PASS_COUNT++))
+    PASS_COUNT=$((PASS_COUNT + 1))
 }
 
 # Fail a test
 fail() {
     local message="$1"
     echo "✗ FAIL: $message"
-    ((FAIL_COUNT++))
+    FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
 # Create a test plan directory with plan.md and tasks.md
