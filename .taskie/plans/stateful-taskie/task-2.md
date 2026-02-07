@@ -8,9 +8,9 @@ Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existin
 
 ### Subtask 2.1: Create `stop-hook.sh` with hook boilerplate and input parsing
 - **Short description**: Create `taskie/hooks/stop-hook.sh` with the unified hook structure: read JSON from stdin, extract `cwd` and `stop_hook_active`, validate inputs, `cd` into `cwd`, check for `stop_hook_active` (approve immediately if true), check for `.taskie/plans` directory. Resolve `PLUGIN_ROOT` relative to the hook's location. Note: hook timeout (600 seconds) and hook registration are handled in subtask 2.5, not here.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Create stop-hook.sh with input parsing and boilerplate
-- **Git commit hash**:
+- **Git commit hash**: 6dd5920
 - **Priority**: high
 - **Complexity**: 4
 - **Test approach**: Test suite 1, tests 1-5: jq check, invalid JSON, invalid directory, stop_hook_active, no .taskie directory.
@@ -27,9 +27,9 @@ Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existin
 
 ### Subtask 2.2: Port validation rules 1-7 from `validate-ground-rules.sh`
 - **Short description**: Copy the existing validation logic (rules 1-7) into `stop-hook.sh`. The validation runs in step 6 of the hook logic — after auto-review has been handled or when falling through. Find the most recently modified plan directory using `find` with `\( -name "*.md" -o -name "state.json" \)`. Preserve all existing rule behavior exactly.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Port validation rules 1-7 to stop-hook.sh
-- **Git commit hash**:
+- **Git commit hash**: 6dd5920
 - **Priority**: high
 - **Complexity**: 5
 - **Test approach**: Test suite 1, tests 6-13: all original validation tests pass against the new hook with identical behavior.
@@ -42,9 +42,9 @@ Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existin
 
 ### Subtask 2.3: Refactor and rename existing validation tests
 - **Short description**: Refactor `tests/hooks/test-validate-ground-rules.sh` to source `test-utils.sh` for common functions. Rename the file to `tests/hooks/test-stop-hook-validation.sh` to match the new hook name. Update the test file to point at `stop-hook.sh` instead of `validate-ground-rules.sh`. Preserve all 13 existing test cases with identical behavior.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Refactor validation tests to use shared helpers, point at stop-hook.sh
-- **Git commit hash**:
+- **Git commit hash**: cdf4f67
 - **Priority**: high
 - **Complexity**: 4
 - **Test approach**: Run the refactored test file and verify all 13 tests still pass with the same pass/fail outcomes as before the refactor.
@@ -59,9 +59,9 @@ Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existin
 
 ### Subtask 2.4: Add state.json validation (rule 8) and write tests 14-17
 - **Short description**: Add rule 8: if `state.json` exists, validate that it is valid JSON and contains the required fields (`phase`, `next_phase`, `review_model`, `max_reviews`, `consecutive_clean`, `tdd`). If validation fails, log a warning to stderr but do NOT block the stop. Use `jq` default operators for reading fields to handle forward-compatibility. Write tests 14-17 for suite 1.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Add state.json validation rule and tests 14-17
-- **Git commit hash**:
+- **Git commit hash**: 8f6fc43
 - **Priority**: medium
 - **Complexity**: 4
 - **Test approach**: Test suite 1, tests 14-17: state.json not rejected by filename validation, invalid JSON warning, missing fields warning, valid state.json passes.
@@ -77,9 +77,9 @@ Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existin
 
 ### Subtask 2.5: Update hook registration and remove old hook
 - **Short description**: Update `taskie/.claude-plugin/plugin.json` to register `stop-hook.sh` instead of `validate-ground-rules.sh`. Set the timeout to 600 seconds. Remove `validate-ground-rules.sh`. Bump the plugin version (MAJOR bump — the stateful hook changes workflow behavior and replaces the validation hook).
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Register stop-hook.sh in plugin.json, remove old hook, bump version
-- **Git commit hash**:
+- **Git commit hash**: 98cfd32
 - **Priority**: high
 - **Complexity**: 2
 - **Test approach**: Verify `plugin.json` references `stop-hook.sh`, old hook is removed, `make test-validation` passes.
