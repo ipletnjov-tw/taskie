@@ -46,13 +46,21 @@ EOF
 create_state_json() {
     local plan_dir="$1"
     local json_content="$2"
+
+    # Ensure directory exists
+    mkdir -p "$plan_dir"
+
     echo "$json_content" > "$plan_dir/state.json"
 }
 
 # Run the hook with JSON input and capture output
 run_hook() {
     local json_input="$1"
-    local hook_script="${HOOK_SCRIPT:-taskie/hooks/stop-hook.sh}"
+
+    # Determine hook script location relative to project root
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local project_root="$(cd "$script_dir/../../.." && pwd)"
+    local hook_script="${HOOK_SCRIPT:-$project_root/taskie/hooks/stop-hook.sh}"
 
     # Create temp files for capturing output
     local stdout_file=$(mktemp)

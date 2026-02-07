@@ -20,6 +20,9 @@ fi
 
 # Write a review file if configured
 if [ -n "${MOCK_CLAUDE_REVIEW_DIR:-}" ] && [ -n "${MOCK_CLAUDE_REVIEW_FILE:-}" ]; then
+    # Ensure directory exists
+    mkdir -p "${MOCK_CLAUDE_REVIEW_DIR}"
+
     VERDICT="${MOCK_CLAUDE_VERDICT:-FAIL}"
     if [ "$VERDICT" = "PASS" ]; then
         cat > "${MOCK_CLAUDE_REVIEW_DIR}/${MOCK_CLAUDE_REVIEW_FILE}" << 'EOF'
