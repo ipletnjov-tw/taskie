@@ -6,9 +6,12 @@ This directory contains automated tests for the Taskie framework components.
 
 ```bash
 ./run-tests.sh              # Run all tests
-./run-tests.sh hooks        # Run only hook tests
-./run-tests.sh --verbose    # Run with verbose output
+./run-tests.sh hooks        # Run all hook tests
+./run-tests.sh state        # Run state/auto-review tests
+./run-tests.sh validation   # Run validation tests only
 make test                   # Run all tests via Make
+make test-validation        # Run validation tests
+make test-state             # Run state/auto-review tests
 ```
 
 ## Test Organization
@@ -16,13 +19,21 @@ make test                   # Run all tests via Make
 ```
 tests/
 ├── README.md
+├── run-tests.sh
+├── Makefile
 └── hooks/
-    └── test-validate-ground-rules.sh
+    ├── helpers/
+    │   ├── test-utils.sh              # Shared test helper functions
+    │   └── mock-claude.sh             # Mock claude CLI for testing
+    ├── test-stop-hook-validation.sh   # Test suite 1: validation rules 1-8
+    ├── test-stop-hook-auto-review.sh  # Test suite 2: auto-review triggers (Task 3)
+    ├── test-stop-hook-state-transitions.sh  # Test suite 3: state transitions (Task 3)
+    └── test-stop-hook-cli-invocation.sh     # Test suite 4: CLI invocation (Task 3)
 ```
 
-## Hook Tests
+## Test Suite 1: Validation Rules
 
-The `test-validate-ground-rules.sh` script validates the Claude Code Stop hook that enforces Taskie plan structure:
+The `test-stop-hook-validation.sh` script validates the unified Stop hook's validation logic:
 
 1. **Dependency Check** - Verifies jq is installed
 2. **Invalid JSON Input** - Tests malformed JSON handling (exit 2)
@@ -37,6 +48,10 @@ The `test-validate-ground-rules.sh` script validates the Claude Code Stop hook t
 11. **Task Files Without tasks.md** - Tests task files present but tasks.md missing
 12. **Non-Table tasks.md** - Tests tasks.md containing prose instead of a table
 13. **Empty tasks.md** - Tests tasks.md with no table rows
+14. **state.json Not Rejected** - Tests that state.json is not rejected by filename validation
+15. **Invalid JSON in state.json** - Tests that invalid JSON logs warning but doesn't block
+16. **Missing Fields in state.json** - Tests that missing required fields log warning but don't block
+17. **Valid state.json** - Tests that valid state.json produces no warnings
 
 ### Expected Behavior
 
@@ -55,3 +70,39 @@ The `test-validate-ground-rules.sh` script validates the Claude Code Stop hook t
 | Tasks without tasks.md | 0 | JSON (decision: block) | Block stop |
 | Non-table tasks.md | 0 | JSON (decision: block) | Block stop |
 | Empty tasks.md | 0 | JSON (decision: block) | Block stop |
+| state.json present | 0 | JSON (systemMessage) | Allow stop |
+| Invalid JSON in state.json | 0 | stderr warning + JSON | Allow stop |
+| Missing fields in state.json | 0 | stderr warning + JSON | Allow stop |
+| Valid state.json | 0 | JSON (systemMessage) | Allow stop |
+
+## Test Suites 2-5: Auto-Review Logic (Task 3)
+
+Test suites 2-5 will be added in Task 3 to test the automated review functionality:
+- **Suite 2**: Auto-review trigger conditions
+- **Suite 3**: State transitions and phase changes
+- **Suite 4**: Claude CLI invocation and flags
+- **Suite 5**: Block message templates and error handling
+
+## Test Suite 6: Edge Cases & Integration (Task 6)
+
+Test suite 6 will be added in Task 6 to test edge cases and integration scenarios.
+
+## Shared Test Helpers
+
+The `tests/hooks/helpers/test-utils.sh` file provides common functions:
+
+- `pass(message)` - Mark a test as passed
+- `fail(message)` - Mark a test as failed
+- `create_test_plan(dir)` - Create a valid test plan structure
+- `create_state_json(dir, json)` - Create state.json with provided JSON
+- `run_hook(json_input)` - Run hook and capture stdout/stderr/exit code
+- `assert_approved()` - Assert hook approved the stop
+- `assert_blocked([pattern])` - Assert hook blocked with optional reason pattern
+- `print_results()` - Print test results and exit
+
+The `tests/hooks/helpers/mock-claude.sh` provides a mock Claude CLI for testing:
+
+- Configured via environment variables (MOCK_CLAUDE_VERDICT, MOCK_CLAUDE_EXIT_CODE, etc.)
+- Simulates the real CLI's JSON output format
+- Logs invocation arguments for verification
+- Supports delays for timeout testing

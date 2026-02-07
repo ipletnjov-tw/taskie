@@ -1,12 +1,12 @@
 {
-  "description": "Validates directory structure and file organization against ground-rules.md",
+  "description": "Validates directory structure and triggers automated reviews",
   "hooks": {
     "Stop": [{
       "hooks": [{
         "type": "command",
-        "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/validate-ground-rules.sh",
-        "timeout": 30,
-        "statusMessage": "Validating plan structure..."
+        "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh",
+        "timeout": 600,
+        "statusMessage": "Validating plan structure and checking for reviews..."
       }]
     }]
   }
