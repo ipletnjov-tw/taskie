@@ -1,10 +1,10 @@
 {
   "max_reviews": 8,
   "current_task": null,
-  "phase": "create-tasks",
-  "phase_iteration": 0,
+  "phase": "post-tasks-review",
+  "phase_iteration": 1,
   "next_phase": "tasks-review",
-  "review_model": "opus",
+  "review_model": "sonnet",
   "consecutive_clean": 0,
   "tdd": false
 }

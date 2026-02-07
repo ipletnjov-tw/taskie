@@ -1,5 +1,7 @@
 # Task 6: Ground Rules, Codex CLI Updates, and Edge Case Tests
 
+**Prerequisites**: Tasks 1-5 (edge case tests require the full hook and all action files to be in place).
+
 Update `ground-rules.md` with state.json documentation, update Codex CLI prompts where practical, write test suite 6 (12 edge case & integration tests).
 
 ## Subtasks

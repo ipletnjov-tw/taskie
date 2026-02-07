@@ -1,5 +1,7 @@
 # Task 5: Action File Changes — Task & Review Actions
 
+**Prerequisites**: Task 2 (hook must exist for block messages to reference). Can run in parallel with Task 3.
+
 Update all task implementation and review action files with state.json read/write instructions.
 
 ## Subtasks

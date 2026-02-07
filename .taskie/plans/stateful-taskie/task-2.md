@@ -1,5 +1,7 @@
 # Task 2: Unified Stop Hook — Validation Migration
 
+**Prerequisites**: Task 1 (test infrastructure must exist before test refactoring in subtask 2.3).
+
 Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existing validation rules (1-7) unchanged, add state.json validation (rule 8), update hook registration in `plugin.json`. Write test suite 1 (17 tests).
 
 ## Subtasks
@@ -73,18 +75,19 @@ Create `stop-hook.sh` that replaces `validate-ground-rules.sh`. Port all existin
   - All 17 tests in suite 1 pass
 
 ### Subtask 2.5: Update hook registration and remove old hook
-- **Short description**: Update `taskie/.claude-plugin/plugin.json` to register `stop-hook.sh` instead of `validate-ground-rules.sh`. Set the timeout to 600 seconds. Remove `validate-ground-rules.sh`. Bump the plugin version (MINOR bump per SemVer — new functionality, backwards-compatible).
+- **Short description**: Update `taskie/.claude-plugin/plugin.json` to register `stop-hook.sh` instead of `validate-ground-rules.sh`. Set the timeout to 600 seconds. Remove `validate-ground-rules.sh`. Bump the plugin version (MAJOR bump — the stateful hook changes workflow behavior and replaces the validation hook).
 - **Status**: pending
 - **Sample git commit message**: Register stop-hook.sh in plugin.json, remove old hook, bump version
 - **Git commit hash**:
 - **Priority**: high
 - **Complexity**: 2
-- **Test approach**: Verify `plugin.json` references `stop-hook.sh`, old hook is removed, `make test` passes.
-- **Must-run commands**: `make test`
+- **Test approach**: Verify `plugin.json` references `stop-hook.sh`, old hook is removed, `make test-validation` passes.
+- **Must-run commands**: `make test-validation`
 - **Acceptance criteria**:
   - `plugin.json` hook entry points to `hooks/stop-hook.sh` with 600-second timeout
   - `validate-ground-rules.sh` is removed
-  - Plugin version bumped in both `.claude-plugin/marketplace.json` and `taskie/.claude-plugin/plugin.json` (MINOR: 2.2.1 → 2.3.0)
+  - Plugin version bumped in both `.claude-plugin/marketplace.json` and `taskie/.claude-plugin/plugin.json` (MAJOR: 2.2.1 → 3.0.0)
   - Update `README.md` latest version reference to match
+  - Update `tests/README.md` with new test file descriptions
   - All 17 tests in test suite 1 pass
-  - `make test` passes (all suites)
+  - `make test-validation` passes

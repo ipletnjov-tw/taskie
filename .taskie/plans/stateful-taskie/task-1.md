@@ -1,5 +1,7 @@
 # Task 1: Test Infrastructure
 
+**Prerequisites**: None (this task MUST complete before any other task begins).
+
 Set up the shared test helpers, mock `claude` CLI, and test runner/Makefile updates that all other tasks depend on.
 
 ## Subtasks
@@ -36,6 +38,7 @@ Set up the shared test helpers, mock `claude` CLI, and test runner/Makefile upda
   - Returns structured JSON on stdout matching `--output-format json` format: `{"result":{"verdict":"PASS"}}` or `{"result":{"verdict":"FAIL"}}` based on `MOCK_CLAUDE_VERDICT` (default `FAIL`). The hook extracts the verdict via `jq -r '.result.verdict'`.
   - Exits with `MOCK_CLAUDE_EXIT_CODE` (default 0)
   - Sleeps for `MOCK_CLAUDE_DELAY` seconds when set
+  - Gracefully accepts all CLI flags the hook passes (`--print`, `--model`, `--output-format`, `--json-schema`, `--dangerously-skip-permissions`) without errors — flags are logged but don't alter mock behavior
   - Does NOT make any real API calls
 
 ### Subtask 1.3: Update test runner and Makefile

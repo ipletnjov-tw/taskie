@@ -1,5 +1,7 @@
 # Task 4: Action File Changes — Planning Actions
 
+**Prerequisites**: Task 2 (hook must exist for block messages to reference). Can run in parallel with Task 3.
+
 Update `new-plan.md`, `continue-plan.md`, and `create-tasks.md` with state.json read/write instructions.
 
 ## Subtasks

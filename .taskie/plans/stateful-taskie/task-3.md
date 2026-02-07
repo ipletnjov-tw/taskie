@@ -1,6 +1,10 @@
 # Task 3: Unified Stop Hook — Auto-Review Logic
 
+**Prerequisites**: Task 2 (stop-hook.sh must exist with steps 1-4 and step 6 validation already implemented).
+
 Implement the core auto-review system in `stop-hook.sh`: state detection (step 5), `claude` CLI invocation with structured JSON output, verdict extraction, state transitions, model alternation, block message templates, auto-advance logic, and atomic state writes. Write test suites 2-5 (51 tests).
+
+**Note on hook steps**: Steps 1-3 (input parsing, `.taskie/plans` check, plan directory detection) and step 6 (validation fallback) are implemented in Task 2. This task implements step 5 (the auto-review logic that sits between plan detection and validation).
 
 ## Subtasks
 
@@ -31,15 +35,15 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
 - **Must-run commands**: `make test`
 - **Acceptance criteria**:
   - `phase_iteration` incremented before CLI invocation
-  - Hard stop when `phase_iteration > max_reviews` (approve, no CLI invocation). Output `systemMessage` warning user that max review limit was reached.
-  - CLI invoked with `--print`, `--model ${REVIEW_MODEL}`, `--output-format json`, `--json-schema`, `--dangerously-skip-permissions`
+  - Hard stop when `phase_iteration > max_reviews` (approve, no CLI invocation). Output `systemMessage`: "Max review limit (${MAX_REVIEWS}) reached for ${REVIEW_TYPE}. Edit state.json to adjust max_reviews or set next_phase manually."
+  - CLI invoked with `--print`, `--model ${REVIEW_MODEL}`, `--output-format json`, `--json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}'`, `--dangerously-skip-permissions`
   - Four distinct prompt templates for plan-review, tasks-review, code-review, all-code-review
   - `TASK_FILE_LIST` built with `grep '^|' | grep -oE 'task-[0-9]+\.md'` (POSIX)
   - Empty `TASK_FILE_LIST` → skip review, approve with warning
   - Code-review uses `current_task` from state directly (not TASK_FILE_LIST)
   - Review file existence verified after CLI returns
   - CLI failure (exit code, missing review file, not on PATH) → approve with warning
-  - CLI subprocess should have a timeout (e.g. `timeout 540` to leave 60s buffer for the hook's 600s total timeout)
+  - CLI subprocess timeout is handled by Claude Code's 600s hook timeout — do NOT use the shell `timeout` command (not available on macOS). If the hook is killed by the system timeout, the stop is allowed through by default.
   - Log file (`.review-${ITERATION}.log`) cleaned up after successful review, persists on failure for debugging
 
 ### Subtask 3.3: Implement verdict extraction and consecutive clean tracking (step 5f-g)
@@ -56,12 +60,13 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
   - `PASS` → increment `consecutive_clean`; `FAIL` or parse error → reset to 0
   - `consecutive_clean >= 2` → auto-advance with correct advance target:
     - plan-review → `create-tasks`
-    - tasks-review → `complete-task` or `complete-task-tdd` (based on `tdd`)
-    - code-review → `complete-task`/`complete-task-tdd` if tasks remain, `all-code-review` if none remain
+    - tasks-review → `complete-task-tdd` if `tdd == true`, `complete-task` if `tdd == false`
+    - code-review (tasks remain) → `complete-task-tdd` if `tdd == true`, `complete-task` if `tdd == false`
+    - code-review (no tasks remain) → `all-code-review` with fresh cycle init (`phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`)
     - all-code-review → sets `phase: "complete"`, `next_phase: null` directly (no further routing needed)
   - Auto-advance approves the stop (no block) — user stop point
   - Approve output includes `systemMessage` informing the user what happened and what to do next (e.g. "Code review passed. Run /taskie:continue-plan to proceed.")
-  - Remaining tasks check uses grep on `tasks.md` for `pending` status rows
+  - Remaining tasks check: `grep '^|' tasks.md | grep -i 'pending' | wc -l` — if count > 0, tasks remain
 
 ### Subtask 3.4: Implement block message templates and state update for non-advance (step 5h)
 - **Short description**: When `consecutive_clean < 2`, write state atomically (set `phase` to review phase, `next_phase` to post-review phase, incremented `phase_iteration`, toggled `review_model`, `consecutive_clean`). Return block decision with the correct template per review type. Templates must include: review file path, post-review action name, state.json update instructions (read-modify-write, temp file + mv), escape hatch note. Model alternation: `opus` ↔ `sonnet`.
@@ -99,3 +104,4 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
   - All tests source shared helpers and use mock claude
   - All tests clean up temp directories in trap handlers
   - `make test` passes with all 51 tests green
+  - Tests implicitly verify steps 1-3 (from Task 2) work correctly since auto-review tests require valid input parsing and plan detection to function
