@@ -44,7 +44,7 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
   - Code-review uses `current_task` from state directly (not TASK_FILE_LIST)
   - Review file existence verified after CLI returns
   - CLI failure (exit code, missing review file, not on PATH) → approve with warning
-  - CLI subprocess timeout is handled by Claude Code's 600s hook timeout — do NOT use the shell `timeout` command (not available on macOS). If the hook is killed by the system timeout, the stop is allowed through by default. **KNOWN LIMITATION**: If the hook times out after incrementing `phase_iteration` but before writing the review file, `state.json` will be left inconsistent. **RECOVERY MECHANISM**: The crash recovery heuristic in Task 4.2 (`continue-plan.md`) automatically handles this timeout-induced inconsistency by checking artifact completeness (review file existence) when resuming with `next_phase` set to a review phase.
+  - CLI subprocess timeout is handled by Claude Code's 600s hook timeout — do NOT use the shell `timeout` command (not available on macOS). If the hook is killed by the system timeout, the stop is allowed through by default. **KNOWN LIMITATION**: If the hook times out after incrementing `phase_iteration` but before writing the review file, `state.json` will be left inconsistent (phase_iteration incremented, but no review file written). The hook will retry the review on next stop. If repeated timeouts occur, the user must manually adjust `max_reviews` or `next_phase` in state.json to proceed.
   - Log file (`.review-${ITERATION}.log`) cleaned up after successful review (CLI exited 0 and review file was written, regardless of PASS/FAIL verdict), persists on CLI failure for debugging
 
 ### Subtask 3.3: Implement verdict extraction and consecutive clean tracking (step 5f-g)
@@ -95,7 +95,7 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
 - **Sample git commit message**: Tests should be committed incrementally with each implementation subtask (e.g., "Add suite 2 tests for state detection and max_reviews logic", "Add suite 4 tests for CLI invocation", etc.)
 - **Git commit hash**:
 - **Priority**: high
-- **Complexity**: 8
+- **Complexity**: 2
 - **Test approach**: Write and commit tests incrementally alongside subtasks 3.1-3.4 implementation. Run `make test` after each commit to verify tests pass. Final verification: all 51 tests pass and each test file is self-contained with cleanup.
 - **Must-run commands**: `make test`
 - **Acceptance criteria**:

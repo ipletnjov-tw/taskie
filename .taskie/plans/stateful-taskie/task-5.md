@@ -72,7 +72,7 @@ Update all task implementation and review action files with state.json read/writ
 - **Test approach**: Manual: verify each post-review action sets `next_phase` back to review phase when `phase_iteration` is non-null. Verify standalone review actions set `next_phase: null`.
 - **Must-run commands**: N/A (prompt files)
 - **Acceptance criteria**:
-  - Review actions (4 files): when `phase_iteration` is null in state.json (standalone), set `phase: "{review-type}"` and `next_phase: null`. When `phase_iteration` is non-null (hook-invoked), don't update state.json (hook manages it)
+  - Review actions (4 files): when `phase_iteration` is null in state.json (standalone), set `phase: "{review-type}"`, `next_phase: null`, and `phase_iteration: null` (explicitly set to prevent stale values from prior automated cycles). When `phase_iteration` is non-null (hook-invoked), don't update state.json (hook manages it)
   - Post-review actions (4 files): automated flow sets `next_phase` to corresponding review phase; standalone sets `next_phase: null`
   - Automated vs standalone detection for post-review actions: check if `phase_iteration` is non-null in `state.json`
   - All 8 files use read-modify-write pattern for state updates

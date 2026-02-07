@@ -49,7 +49,7 @@ Update `ground-rules.md` with state.json documentation, update Codex CLI prompts
 - **Acceptance criteria**:
   - `tests/hooks/test-stop-hook-edge-cases.sh` contains 12 tests matching plan specification
   - Test 1: validates most-recent-plan selection with multiple plan dirs
-  - Test 5: state.json exists with `next_phase: "plan-review"` but plan.md missing (crash before plan written) — validation blocks for missing plan.md (rule 1), not auto-review
+  - Test 5: state.json exists with `next_phase: null` (or non-review phase) but plan.md missing (crash during initialization) — validation blocks for missing plan.md (rule 1), auto-review doesn't run because next_phase isn't a review phase
   - Test 8: verifies `max_reviews: 0` advances state without CLI invocation
   - Test 10: full model alternation integration (4 iterations, mock CLI)
   - Test 11: two consecutive clean reviews integration (2 hook invocations)

@@ -19,9 +19,8 @@ Set up the shared test helpers, mock `claude` CLI, and test runner/Makefile upda
   - File exists at `tests/hooks/helpers/test-utils.sh`
   - All 8 functions listed in the plan are implemented: `pass`, `fail`, `create_test_plan`, `create_state_json`, `run_hook`, `assert_approved`, `assert_blocked`, `print_results`
   - `create_test_plan` creates a directory with `plan.md` and `tasks.md` (valid table format)
-  - `run_hook` pipes JSON to the hook, captures stdout, stderr, and exit code separately
+  - `run_hook` pipes JSON to the hook, captures stdout, stderr, and exit code separately (use temp files or capture variables)
   - `print_results` exits 1 if any failures occurred
-  - `run_hook` captures stdout, stderr, and exit code separately (use temp files or capture variables)
   - `assert_approved` verifies exit code 0 AND either no output, `{"suppressOutput": true}`, or `{"systemMessage": "..."}`  (no `decision: "block"` in output)
   - `assert_blocked` verifies exit code 0 AND `decision: "block"` in JSON output, optionally checks reason matches pattern
   - `create_state_json` accepts plan directory path and full JSON string as parameters
