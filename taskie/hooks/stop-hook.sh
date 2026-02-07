@@ -156,7 +156,30 @@ validate_plan_structure() {
         fi
     fi
 
-    # TODO: Rule 8 - state.json validation (Task 2, Subtask 2.4)
+    # Rule 8: state.json validation (if exists)
+    if [ -f "$plan_dir/state.json" ]; then
+        # Validate JSON syntax
+        if ! jq empty "$plan_dir/state.json" 2>/dev/null; then
+            echo "Warning: state.json contains invalid JSON" >&2
+        else
+            # Validate required fields (with forward-compatible default operators)
+            local phase=$(jq -r '(.phase // "")' "$plan_dir/state.json" 2>/dev/null)
+            local next_phase=$(jq -r '(.next_phase // "")' "$plan_dir/state.json" 2>/dev/null)
+            local review_model=$(jq -r '(.review_model // "")' "$plan_dir/state.json" 2>/dev/null)
+            local max_reviews=$(jq -r '(.max_reviews // 0)' "$plan_dir/state.json" 2>/dev/null)
+            local consecutive_clean=$(jq -r '(.consecutive_clean // 0)' "$plan_dir/state.json" 2>/dev/null)
+            local tdd=$(jq -r '(.tdd // false)' "$plan_dir/state.json" 2>/dev/null)
+
+            local missing_fields=""
+            [ -z "$phase" ] && missing_fields="${missing_fields}phase "
+            [ -z "$next_phase" ] && missing_fields="${missing_fields}next_phase "
+            [ -z "$review_model" ] && missing_fields="${missing_fields}review_model "
+
+            if [ -n "$missing_fields" ]; then
+                echo "Warning: state.json missing required fields: ${missing_fields}" >&2
+            fi
+        fi
+    fi
 
     if [ -n "$errors" ]; then
         echo "$errors"
@@ -168,7 +191,8 @@ validate_plan_structure() {
 # Validate only the most recently modified plan
 PLAN_NAME=$(basename "$RECENT_PLAN")
 set +e
-PLAN_ERROR=$(validate_plan_structure "$RECENT_PLAN" 2>&1)
+# Capture only stdout (errors), let stderr (warnings) pass through
+PLAN_ERROR=$(validate_plan_structure "$RECENT_PLAN")
 PLAN_RESULT=$?
 set -e
 

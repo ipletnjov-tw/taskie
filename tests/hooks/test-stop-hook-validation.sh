@@ -201,6 +201,56 @@ else
 fi
 rm -rf "$TEST_DIR"
 
-# TODO: Tests 14-17 for state.json validation (Subtask 2.4)
+# Test 14: state.json is not rejected by filename validation
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false}'
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+    pass "state.json not rejected by filename validation"
+else
+    fail "state.json incorrectly blocked (exit $HOOK_EXIT_CODE)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 15: Invalid JSON in state.json logs warning but doesn't block
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "{ invalid json }" > "$TEST_DIR/.taskie/plans/test-plan/state.json"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDERR" | grep -q "invalid JSON" && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+    pass "Invalid JSON in state.json logs warning but doesn't block"
+else
+    fail "Invalid JSON in state.json handled incorrectly (exit $HOOK_EXIT_CODE)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 16: Missing required fields in state.json logs warning but doesn't block
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"max_reviews": 8}'
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDERR" | grep -q "missing required fields" && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+    pass "Missing required fields in state.json logs warning but doesn't block"
+else
+    fail "Missing fields in state.json handled incorrectly (exit $HOOK_EXIT_CODE)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 17: Valid state.json produces no warnings
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false}'
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 0 ] && ! echo "$HOOK_STDERR" | grep -q "Warning" && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+    pass "Valid state.json produces no warnings"
+else
+    fail "Valid state.json incorrectly warned (exit $HOOK_EXIT_CODE)"
+fi
+rm -rf "$TEST_DIR"
 
 print_results
