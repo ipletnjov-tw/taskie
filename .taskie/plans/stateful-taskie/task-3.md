@@ -10,9 +10,9 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
 
 ### Subtask 3.1: Implement state.json reading and review phase detection (step 5)
 - **Short description**: After validation setup (step 4), read `state.json` with `jq` default operators. Check if `next_phase` is a review phase (`plan-review`, `tasks-review`, `code-review`, `all-code-review`). If not a review phase, fall through to step 6 (validation). If `state.json` is missing or malformed, fall through to validation. Implement step 5a: `max_reviews == 0` early return — set `next_phase` to the advance target, write state atomically, approve.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Implement state reading and review phase detection in stop-hook
-- **Git commit hash**:
+- **Git commit hash**: c1b97c5
 - **Priority**: high
 - **Complexity**: 5
 - **Test approach**: Test suite 2, tests 4-5, 8-11: standalone mode, post-review phases, missing/malformed state, non-review next_phase values. Test suite 6, test 8: max_reviews=0 skip.
@@ -26,9 +26,9 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
 
 ### Subtask 3.2: Implement `claude` CLI invocation and review file verification (step 5b-e)
 - **Short description**: Implement step 5b (increment `phase_iteration`), step 5c (`phase_iteration <= max_reviews` check — hard stop if exceeded), step 5d (`claude` CLI invocation with `--print`, `--model`, `--output-format json`, `--json-schema`, `--dangerously-skip-permissions`, correct prompt per review type, stderr to log file), step 5e (verify review file was written to disk). Build `TASK_FILE_LIST` with POSIX-compatible grep for tasks-review and all-code-review prompts. Use `current_task` directly for code-review prompts.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Implement claude CLI invocation and review file verification
-- **Git commit hash**:
+- **Git commit hash**: 25f018f
 - **Priority**: high
 - **Complexity**: 7
 - **Test approach**: Test suite 2, tests 1-3, 6-7, 12: review triggers for all four types, max reviews reached, all-code-review trigger. Test suite 4, tests 1-14: CLI flag verification, prompt content, review file paths, failure handling.
@@ -49,9 +49,9 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
 
 ### Subtask 3.3: Implement verdict extraction and consecutive clean tracking (step 5f-g)
 - **Short description**: Extract verdict from `CLI_OUTPUT` via `jq -r '.result.verdict'`. If `PASS`, increment `consecutive_clean`. If `FAIL` or parse failure, reset `consecutive_clean` to 0. Implement step 5g: if `consecutive_clean >= 2`, auto-advance — set `next_phase` to the advance target based on review type and `tdd` field. For code review, check `tasks.md` for remaining pending tasks to decide between `complete-task` variant and `all-code-review`. For all-code-review advance, enter fresh review cycle (`phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`). Approve the stop (user stop point).
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Implement verdict extraction and auto-advance logic
-- **Git commit hash**:
+- **Git commit hash**: 25f018f
 - **Priority**: high
 - **Complexity**: 7
 - **Test approach**: Test suite 2, tests 13-15: one clean (not enough), two clean (advance), clean-then-dirty (reset). Test suite 3, tests 9-15: consecutive_clean state changes, all four advance targets, all-fields-updated check.
@@ -71,9 +71,9 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
 
 ### Subtask 3.4: Implement block message templates and state update for non-advance (step 5h)
 - **Short description**: When `consecutive_clean < 2`, write state atomically (set `phase` to review phase, `next_phase` to post-review phase, incremented `phase_iteration`, toggled `review_model`, `consecutive_clean`). Return block decision with the correct template per review type. Templates must include: review file path, post-review action name, state.json update instructions (read-modify-write, temp file + mv), escape hatch note. Model alternation: `opus` ↔ `sonnet`.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Implement block messages and non-advance state updates
-- **Git commit hash**:
+- **Git commit hash**: 25f018f
 - **Priority**: high
 - **Complexity**: 5
 - **Test approach**: Test suite 3, tests 1-8: state correctly updated after review for all four types, model alternation, field preservation. Test suite 5, tests 1-6: block message content verification.
@@ -91,9 +91,9 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
 
 ### Subtask 3.5: Verify test suites 2-5 (tracking/verification subtask)
 - **Short description**: This is a tracking/verification subtask to ensure all tests for suites 2-5 are present and passing after subtasks 3.1-3.4 complete. Tests should be written and committed alongside each implementation subtask (3.1-3.4), NOT deferred to a separate phase. **Implementation approach**: As you complete each implementation subtask, immediately write and commit the corresponding tests. For example: write and commit suite 2 tests 4-5, 8-11 immediately after completing 3.1; write and commit suite 4 tests immediately after completing 3.2. This subtask serves as the final verification that all 51 tests exist and pass, not as a separate implementation phase.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Tests should be committed incrementally with each implementation subtask (e.g., "Add suite 2 tests for state detection and max_reviews logic", "Add suite 4 tests for CLI invocation", etc.)
-- **Git commit hash**:
+- **Git commit hash**: c1b97c5, 25f018f, f27c639
 - **Priority**: high
 - **Complexity**: 2
 - **Test approach**: Write and commit tests incrementally alongside subtasks 3.1-3.4 implementation. Run `make test` after each commit to verify tests pass. Final verification: all 51 tests pass and each test file is self-contained with cleanup.
