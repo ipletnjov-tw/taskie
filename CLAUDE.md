@@ -4,7 +4,7 @@ Taskie is a prompt framework plugin for Claude Code. See @README.md for details.
 
 ## Versioning
 
-**IMPORTANT: Every change must include a version bump.** Both JSON files must be updated together:
+**IMPORTANT: Every change must include a version bump**, except for changes that only affect tests (files under `tests/`, `run-tests.sh`, `Makefile` test targets). Both JSON files must be updated together:
 
 - `.claude-plugin/marketplace.json` — the `plugins[0].version` field
 - `taskie/.claude-plugin/plugin.json` — the `version` field

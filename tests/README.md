@@ -30,7 +30,13 @@ The `test-validate-ground-rules.sh` script validates the Claude Code Stop hook t
 4. **Infinite Loop Prevention** - Tests stop_hook_active flag
 5. **Non-Taskie Projects** - Tests graceful skip when no .taskie directory
 6. **Valid Plan Structure** - Tests successful validation
-7. **Invalid Plan Structure** - Tests validation failure and blocking
+7. **Invalid Plan Structure** - Tests missing plan.md and invalid filename
+8. **Nested Directories** - Tests files in subdirectories of a plan
+9. **Review Without Base File** - Tests review file without its base document
+10. **Post-Review Without Review** - Tests post-review without matching review
+11. **Task Files Without tasks.md** - Tests task files present but tasks.md missing
+12. **Non-Table tasks.md** - Tests tasks.md containing prose instead of a table
+13. **Empty tasks.md** - Tests tasks.md with no table rows
 
 ### Expected Behavior
 
@@ -43,3 +49,9 @@ The `test-validate-ground-rules.sh` script validates the Claude Code Stop hook t
 | No .taskie dir | 0 | JSON (suppressOutput) | Allow stop |
 | Valid plan | 0 | JSON (systemMessage) | Allow stop |
 | Invalid plan | 0 | JSON (decision: block) | Block stop |
+| Nested directories | 0 | JSON (decision: block) | Block stop |
+| Review without base | 0 | JSON (decision: block) | Block stop |
+| Post-review without review | 0 | JSON (decision: block) | Block stop |
+| Tasks without tasks.md | 0 | JSON (decision: block) | Block stop |
+| Non-table tasks.md | 0 | JSON (decision: block) | Block stop |
+| Empty tasks.md | 0 | JSON (decision: block) | Block stop |

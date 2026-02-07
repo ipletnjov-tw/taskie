@@ -153,6 +153,138 @@ fi
 rm -rf "$TEST_DIR"
 echo ""
 
+# Test 8: Nested directories
+echo -e "${YELLOW}Test 8: Testing nested directories in plan...${NC}"
+TEST_DIR=$(mktemp -d)
+mkdir -p "$TEST_DIR/.taskie/plans/test-plan/nested"
+cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
+# Test Plan
+EOF
+cat > "$TEST_DIR/.taskie/plans/test-plan/nested/extra.md" << 'EOF'
+# Should not be here
+EOF
+
+RESULT=$(echo "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" | bash "$HOOK_SCRIPT" 2>&1)
+EXIT_CODE=$?
+if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q '"decision": "block"' && echo "$RESULT" | grep -q "nested directories"; then
+    pass "Nested directories correctly blocked"
+    echo "   Output: $RESULT"
+else
+    fail "Nested directories not handled correctly (exit $EXIT_CODE: $RESULT)"
+fi
+rm -rf "$TEST_DIR"
+echo ""
+
+# Test 9: Review file without base file
+echo -e "${YELLOW}Test 9: Testing review file without base file...${NC}"
+TEST_DIR=$(mktemp -d)
+mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
+# Test Plan
+EOF
+cat > "$TEST_DIR/.taskie/plans/test-plan/design-review-1.md" << 'EOF'
+# Review of design that does not exist
+EOF
+
+RESULT=$(echo "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" | bash "$HOOK_SCRIPT" 2>&1)
+EXIT_CODE=$?
+if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q '"decision": "block"' && echo "$RESULT" | grep -q "design-review-1.md requires design.md"; then
+    pass "Review without base file correctly blocked"
+    echo "   Output: $RESULT"
+else
+    fail "Review without base file not handled correctly (exit $EXIT_CODE: $RESULT)"
+fi
+rm -rf "$TEST_DIR"
+echo ""
+
+# Test 10: Post-review file without review file
+echo -e "${YELLOW}Test 10: Testing post-review without review file...${NC}"
+TEST_DIR=$(mktemp -d)
+mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
+# Test Plan
+EOF
+cat > "$TEST_DIR/.taskie/plans/test-plan/plan-post-review-1.md" << 'EOF'
+# Post-review without matching review
+EOF
+
+RESULT=$(echo "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" | bash "$HOOK_SCRIPT" 2>&1)
+EXIT_CODE=$?
+if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q '"decision": "block"' && echo "$RESULT" | grep -q "plan-post-review-1.md requires plan-review-1.md"; then
+    pass "Post-review without review correctly blocked"
+    echo "   Output: $RESULT"
+else
+    fail "Post-review without review not handled correctly (exit $EXIT_CODE: $RESULT)"
+fi
+rm -rf "$TEST_DIR"
+echo ""
+
+# Test 11: Task files without tasks.md
+echo -e "${YELLOW}Test 11: Testing task files without tasks.md...${NC}"
+TEST_DIR=$(mktemp -d)
+mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
+# Test Plan
+EOF
+cat > "$TEST_DIR/.taskie/plans/test-plan/task-1.md" << 'EOF'
+# Task 1
+Do something.
+EOF
+
+RESULT=$(echo "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" | bash "$HOOK_SCRIPT" 2>&1)
+EXIT_CODE=$?
+if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q '"decision": "block"' && echo "$RESULT" | grep -q "Task files exist but tasks.md is missing"; then
+    pass "Task files without tasks.md correctly blocked"
+    echo "   Output: $RESULT"
+else
+    fail "Task files without tasks.md not handled correctly (exit $EXIT_CODE: $RESULT)"
+fi
+rm -rf "$TEST_DIR"
+echo ""
+
+# Test 12: tasks.md with non-table content
+echo -e "${YELLOW}Test 12: Testing tasks.md with non-table content...${NC}"
+TEST_DIR=$(mktemp -d)
+mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
+# Test Plan
+EOF
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+# Tasks
+This is not a table, it's prose.
+EOF
+
+RESULT=$(echo "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" | bash "$HOOK_SCRIPT" 2>&1)
+EXIT_CODE=$?
+if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q '"decision": "block"' && echo "$RESULT" | grep -q "non-table content"; then
+    pass "Non-table tasks.md correctly blocked"
+    echo "   Output: $RESULT"
+else
+    fail "Non-table tasks.md not handled correctly (exit $EXIT_CODE: $RESULT)"
+fi
+rm -rf "$TEST_DIR"
+echo ""
+
+# Test 13: Empty tasks.md (no table rows)
+echo -e "${YELLOW}Test 13: Testing empty tasks.md...${NC}"
+TEST_DIR=$(mktemp -d)
+mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
+# Test Plan
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/tasks.md"
+
+RESULT=$(echo "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" | bash "$HOOK_SCRIPT" 2>&1)
+EXIT_CODE=$?
+if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q '"decision": "block"' && echo "$RESULT" | grep -q "no table rows"; then
+    pass "Empty tasks.md correctly blocked"
+    echo "   Output: $RESULT"
+else
+    fail "Empty tasks.md not handled correctly (exit $EXIT_CODE: $RESULT)"
+fi
+rm -rf "$TEST_DIR"
+echo ""
+
 echo "================================"
 echo "Results: $TESTS_PASSED passed, $TESTS_FAILED failed"
 echo "================================"
