@@ -147,11 +147,16 @@ The hook receives a JSON payload on **stdin** containing at least:
 
 **Loop detection safety nets**: Two independent mechanisms prevent infinite loops: (1) `stop_hook_active` — the primary defense, provided by Claude Code's hook system; (2) `max_reviews` — the secondary cap, enforced by the hook itself. Together these provide sufficient protection without additional lock-file mechanisms. A lock file was considered but adds complexity (race conditions, cleanup on crash, arbitrary timeouts) without meaningful additional safety given that both existing mechanisms are reliable.
 
-The hook outputs a JSON decision on **stdout**:
-- **Approve (silent):** `{"suppressOutput": true}` — exit 0
-- **Approve (with message):** `{"systemMessage": "...", "suppressOutput": true}` — exit 0
-- **Block:** `{"decision": "block", "reason": "..."}` — exit 0. The `reason` string is shown to the main agent as instructions.
-- **Fatal error:** exit 2 (e.g. invalid JSON input). Stderr is used for error messages.
+The hook outputs a JSON decision on **stdout** (exit 0 in all cases):
+- **Approve (silent):** no output, or `{"suppressOutput": true}` to hide from verbose logs. Exit 0.
+- **Approve (with user warning):** `{"systemMessage": "...", "suppressOutput": true}` — exit 0. The `systemMessage` is shown to the **user** in the terminal as a warning. Claude does NOT see it.
+- **Block:** `{"decision": "block", "reason": "..."}` — exit 0. The `reason` string is shown to **Claude** as instructions for what to do next. This is the only way to prevent Claude from stopping.
+- **Critical failure:** `{"continue": false, "stopReason": "..."}` — exit 0. Stops Claude entirely. `stopReason` is shown to the user, not Claude. Use for unrecoverable errors.
+
+Exit codes:
+- **0**: Success. JSON output determines approve/block behavior.
+- **2**: Non-blocking error. Stderr shown to user. **Stop hooks cannot block via exit code 2** — only `decision: "block"` with exit 0 can block. We use exit 2 for input validation failures (invalid JSON, bad cwd) where we want the stop to proceed despite the error.
+- **Other**: Non-blocking error, shown in verbose mode only.
 
 ### Hook Logic
 
