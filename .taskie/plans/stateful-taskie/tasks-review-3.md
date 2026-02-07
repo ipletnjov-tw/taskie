@@ -41,19 +41,9 @@ This contradicts the plan's intent. The plan says tests should be written alongs
 
 ---
 
-## Issue 3: BLOCKING — Task 2 subtask 2.5 says version bump 2.2.1 → 3.0.0, but this should happen ONCE at the end, not mid-implementation
+## ~~Issue 3~~ — DISMISSED
 
-**Plan reference**: The plan doesn't specify when the version bump happens. CLAUDE.md says "Every change must include a version bump" except test-only changes.
-
-**Task 2.5** says: "Plugin version bumped in both files (MAJOR: 2.2.1 → 3.0.0)."
-
-**Problem**: If version is bumped to 3.0.0 in Task 2, then Tasks 3-6 would need additional bumps (since they also make non-test changes). But the tasks don't mention any further version bumps after Task 2.5.
-
-**Two interpretations**:
-1. The bump happens once in Task 2.5 and covers all work on this branch (since it's all one feature). Tasks 3-6 don't need bumps because the branch hasn't been released yet.
-2. Each task needs its own bump per CLAUDE.md rules.
-
-**Recommendation**: Clarify that the 3.0.0 bump in Task 2.5 covers the entire feature branch. Add a note to Tasks 3-6 stating "No version bump needed — covered by Task 2.5's MAJOR bump."
+Version bump in Task 2.5 obviously covers the entire feature branch. Not an issue.
 
 ---
 
@@ -288,7 +278,7 @@ The plan says "the agent must wait for user input before proceeding" — but wit
 | # | Severity | Summary |
 |---|----------|---------|
 | 2 | CRITICAL | Task 3.5 test deferral contradicts plan's "write tests alongside implementation" intent |
-| 3 | BLOCKING | Version bump timing unclear — should explicitly state 3.0.0 covers entire branch |
+| ~~3~~ | ~~DISMISSED~~ | ~~Version bump timing — covers entire branch, not an issue~~ |
 | 4 | CRITICAL | tasks.md lacks dependency/prerequisite column; parallelism info only in task files |
 | 6 | CRITICAL | Hook timeout crash leaves state.json inconsistent; continue-plan crash recovery should handle it |
 | 7 | BLOCKING | Remaining tasks check won't exclude current task — will never reach all-code-review |
@@ -301,7 +291,8 @@ The plan says "the agent must wait for user input before proceeding" — but wit
 | 17 | MINOR | Subtask 2.1 and 2.5 both mention plugin.json — clarify who owns it |
 | 18 | OBSERVATION | Hard stop UX requires manual state.json editing by user |
 
-**Blocking issues (3)**: #3, #7, #10
+**Blocking issues (2)**: #7, #10
 **Critical issues (5)**: #2, #4, #6, #11, #15
 **Minor issues (4)**: #9, #12, #13, #17
 **Observations (1)**: #18
+**Dismissed (1)**: #3
