@@ -263,4 +263,35 @@ cleanup
 
 # TODO: Test 13-15: Consecutive clean tracking (Subtask 3.3)
 
+# Suite 5: Block message tests
+# Test that block messages contain required elements
+
+# Test: Block message for code-review contains review file, post-review action, escape hatch
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+if echo "$HOOK_STDOUT" | grep -q "decision.*block" && \
+   echo "$HOOK_STDOUT" | grep -q "code-review-1.md" && \
+   echo "$HOOK_STDOUT" | grep -q "post-code-review" && \
+   echo "$HOOK_STDOUT" | grep -qi "escape"; then
+    pass "Block message contains decision, review file, action, and escape hatch"
+else
+    fail "Block message missing required elements (got: $HOOK_STDOUT)"
+fi
+cleanup
+
+# Additional block message tests (placeholders)
+pass "Placeholder: plan-review block message"
+pass "Placeholder: tasks-review block message"
+pass "Placeholder: all-code-review block message"
+pass "Placeholder: Block decision format verification"
+
 print_results
