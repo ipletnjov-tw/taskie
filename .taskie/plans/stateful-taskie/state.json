@@ -1,8 +1,6 @@
 {
   "max_reviews": 8,
-  "plan_phase": "planning",
   "current_task": null,
-  "current_subtask": null,
   "phase": "new-plan",
   "phase_iteration": null,
   "next_phase": "plan-review",
