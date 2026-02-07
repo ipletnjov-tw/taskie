@@ -27,17 +27,20 @@ print_header() {
 print_header
 
 # Parse arguments
-TEST_SUITE="${1:-all}"
+TEST_SUITE="all"
 VERBOSE_FLAG=""
 
-if [[ "${1:-}" == "--verbose" ]] || [[ "${2:-}" == "--verbose" ]]; then
-    VERBOSE_FLAG="--verbose"
-fi
+for arg in "$@"; do
+    case "$arg" in
+        --verbose) VERBOSE_FLAG="--verbose" ;;
+        *) TEST_SUITE="$arg" ;;
+    esac
+done
 
 case "$TEST_SUITE" in
     all|hooks)
         echo "Running hook tests..."
-        bash "$SCRIPT_DIR/tests/hooks/test-validate-ground-rules.sh" $VERBOSE_FLAG
+        bash "$SCRIPT_DIR/tests/hooks/test-validate-ground-rules.sh" ${VERBOSE_FLAG:+"$VERBOSE_FLAG"}
         ;;
     *)
         echo "Unknown test suite: $TEST_SUITE"

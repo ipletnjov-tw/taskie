@@ -24,6 +24,20 @@ NC='\033[0m' # No Color
 # Verbose mode
 VERBOSE="${1:-}"
 
+# Test tracking
+TESTS_PASSED=0
+TESTS_FAILED=0
+
+pass() {
+    echo -e "${GREEN}✓ $1${NC}"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+}
+
+fail() {
+    echo -e "${RED}✗ $1${NC}"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+}
+
 # Verify hook script exists
 if [[ ! -f "$HOOK_SCRIPT" ]]; then
     echo -e "${RED}Error: Hook script not found at $HOOK_SCRIPT${NC}"
@@ -40,9 +54,9 @@ echo ""
 # Test 1: Check if jq is installed
 echo -e "${YELLOW}Test 1: Checking jq dependency...${NC}"
 if command -v jq &> /dev/null; then
-    echo -e "${GREEN}✓ jq is installed${NC}"
+    pass "jq is installed"
 else
-    echo -e "${RED}✗ jq is NOT installed - dependency check will be tested${NC}"
+    fail "jq is NOT installed"
 fi
 echo ""
 
@@ -51,12 +65,10 @@ echo -e "${YELLOW}Test 2: Testing invalid JSON input...${NC}"
 RESULT=$(echo "invalid json" | bash "$HOOK_SCRIPT" 2>&1)
 EXIT_CODE=$?
 if [ $EXIT_CODE -eq 2 ] && echo "$RESULT" | grep -q "Invalid JSON input"; then
-    echo -e "${GREEN}✓ Invalid JSON correctly caught (exit 2)${NC}"
+    pass "Invalid JSON correctly caught (exit 2)"
     echo "   Error: $RESULT"
 else
-    echo -e "${RED}✗ Invalid JSON not handled correctly${NC}"
-    echo "   Exit code: $EXIT_CODE"
-    echo "   Output: $RESULT"
+    fail "Invalid JSON not handled correctly (exit $EXIT_CODE: $RESULT)"
 fi
 echo ""
 
@@ -65,12 +77,10 @@ echo -e "${YELLOW}Test 3: Testing invalid directory...${NC}"
 RESULT=$(echo '{"cwd": "/nonexistent/directory", "stop_hook_active": false}' | bash "$HOOK_SCRIPT" 2>&1)
 EXIT_CODE=$?
 if [ $EXIT_CODE -eq 2 ] && echo "$RESULT" | grep -q "Cannot change to project directory"; then
-    echo -e "${GREEN}✓ Invalid directory correctly caught (exit 2)${NC}"
+    pass "Invalid directory correctly caught (exit 2)"
     echo "   Error: $RESULT"
 else
-    echo -e "${RED}✗ Invalid directory not handled correctly${NC}"
-    echo "   Exit code: $EXIT_CODE"
-    echo "   Output: $RESULT"
+    fail "Invalid directory not handled correctly (exit $EXIT_CODE: $RESULT)"
 fi
 echo ""
 
@@ -79,12 +89,10 @@ echo -e "${YELLOW}Test 4: Testing stop_hook_active (infinite loop prevention)...
 RESULT=$(echo '{"cwd": ".", "stop_hook_active": true}' | bash "$HOOK_SCRIPT" 2>&1)
 EXIT_CODE=$?
 if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q "suppressOutput"; then
-    echo -e "${GREEN}✓ Stop hook active correctly handled (exit 0 with suppressOutput)${NC}"
+    pass "Stop hook active correctly handled (exit 0 with suppressOutput)"
     echo "   Output: $RESULT"
 else
-    echo -e "${RED}✗ Stop hook active not handled correctly${NC}"
-    echo "   Exit code: $EXIT_CODE"
-    echo "   Output: $RESULT"
+    fail "Stop hook active not handled correctly (exit $EXIT_CODE: $RESULT)"
 fi
 echo ""
 
@@ -93,12 +101,10 @@ echo -e "${YELLOW}Test 5: Testing project without .taskie directory...${NC}"
 RESULT=$(echo "{\"cwd\": \"$PWD\", \"stop_hook_active\": false}" | bash "$HOOK_SCRIPT" 2>&1)
 EXIT_CODE=$?
 if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q "suppressOutput"; then
-    echo -e "${GREEN}✓ No .taskie directory correctly handled (exit 0 with suppressOutput)${NC}"
+    pass "No .taskie directory correctly handled (exit 0 with suppressOutput)"
     echo "   Output: $RESULT"
 else
-    echo -e "${RED}✗ No .taskie directory not handled correctly${NC}"
-    echo "   Exit code: $EXIT_CODE"
-    echo "   Output: $RESULT"
+    fail "No .taskie directory not handled correctly (exit $EXIT_CODE: $RESULT)"
 fi
 echo ""
 
@@ -120,12 +126,10 @@ EOF
 RESULT=$(echo "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" | bash "$HOOK_SCRIPT" 2>&1)
 EXIT_CODE=$?
 if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q "validated successfully"; then
-    echo -e "${GREEN}✓ Valid plan structure correctly validated (exit 0 with success message)${NC}"
+    pass "Valid plan structure correctly validated (exit 0 with success message)"
     echo "   Output: $RESULT"
 else
-    echo -e "${RED}✗ Valid plan structure not handled correctly${NC}"
-    echo "   Exit code: $EXIT_CODE"
-    echo "   Output: $RESULT"
+    fail "Valid plan structure not handled correctly (exit $EXIT_CODE: $RESULT)"
 fi
 rm -rf "$TEST_DIR"
 echo ""
@@ -141,16 +145,18 @@ EOF
 RESULT=$(echo "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" | bash "$HOOK_SCRIPT" 2>&1)
 EXIT_CODE=$?
 if [ $EXIT_CODE -eq 0 ] && echo "$RESULT" | grep -q '"decision": "block"'; then
-    echo -e "${GREEN}✓ Invalid plan structure correctly blocked (exit 0 with decision: block)${NC}"
+    pass "Invalid plan structure correctly blocked (exit 0 with decision: block)"
     echo "   Output: $RESULT"
 else
-    echo -e "${RED}✗ Invalid plan structure not handled correctly${NC}"
-    echo "   Exit code: $EXIT_CODE"
-    echo "   Output: $RESULT"
+    fail "Invalid plan structure not handled correctly (exit $EXIT_CODE: $RESULT)"
 fi
 rm -rf "$TEST_DIR"
 echo ""
 
 echo "================================"
-echo "Test Summary Complete"
+echo "Results: $TESTS_PASSED passed, $TESTS_FAILED failed"
 echo "================================"
+
+if [ "$TESTS_FAILED" -gt 0 ]; then
+    exit 1
+fi
