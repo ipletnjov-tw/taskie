@@ -34,7 +34,8 @@ The state file lives at `.taskie/plans/{plan-id}/state.json` and reflects ONLY t
   "phase_iteration": 2,
   "next_phase": "post-code-review",
   "review_model": "opus",
-  "consecutive_clean": 0
+  "consecutive_clean": 0,
+  "tdd": false
 }
 ```
 
@@ -44,11 +45,12 @@ The state file lives at `.taskie/plans/{plan-id}/state.json` and reflects ONLY t
 |-------|------|-------------|
 | `max_reviews` | number | Maximum review iterations per review cycle (default 8). Each review cycle (plan-review, tasks-review, code-review per task, all-code-review) independently tracks iterations against this limit. For example, `max_reviews: 4` allows up to 4 plan reviews AND 4 tasks reviews AND 4 code reviews per task AND 4 all-code-reviews. Applies globally to all tasks. |
 | `current_task` | string\|null | Current task ID (e.g. `"3"`), null during planning phases |
-| `phase` | string | Current action/phase: `"new-plan"`, `"plan-review"`, `"post-plan-review"`, `"create-tasks"`, `"tasks-review"`, `"post-tasks-review"`, `"next-task"`, `"next-task-tdd"`, `"continue-task"`, `"code-review"`, `"post-code-review"`, `"all-code-review"`, `"post-all-code-review"`, `"complete"` |
+| `phase` | string | Current action/phase: `"new-plan"`, `"plan-review"`, `"post-plan-review"`, `"create-tasks"`, `"tasks-review"`, `"post-tasks-review"`, `"next-task"`, `"next-task-tdd"`, `"complete-task"`, `"complete-task-tdd"`, `"continue-task"`, `"code-review"`, `"post-code-review"`, `"all-code-review"`, `"post-all-code-review"`, `"complete"` |
 | `phase_iteration` | number\|null | Review iteration counter (0-based). Initialized to 0 when entering a review cycle. The hook increments it BEFORE running each review (so the first review runs at iteration 1, written to `*-review-1.md`). The hook then checks `incremented_value <= max_reviews` — if false, the review is skipped and the stop is allowed. This yields exactly `max_reviews` reviews. Null during non-review phases. Resets to 0 when `current_task` changes or a new review cycle begins. |
 | `next_phase` | string\|null | The phase to transition to after the current one completes. Null when no automated follow-up is expected (e.g. standalone `next-task` without review automation, or `phase` is `"complete"`). |
 | `review_model` | string | Model alias for the next review: `"opus"` or `"sonnet"`. Passed directly to the `claude` CLI as `--model opus` or `--model sonnet`, which resolve to the latest version of each model. Alternates after each review. Starts with `"opus"`. |
 | `consecutive_clean` | number | Count of consecutive clean reviews (no issues found). Resets to 0 whenever a review finds issues. When this reaches 2, the hook auto-advances to the next phase instead of blocking for another post-review. Initialized to 0 when entering a review cycle. |
+| `tdd` | boolean | Whether the workflow uses TDD (red-green-refactor). Set to `true` by `complete-task-tdd`, `false` by `complete-task`. The hook uses this to auto-advance to `"complete-task-tdd"` or `"complete-task"` after code review passes — ensuring the same workflow variant is used for all tasks in the plan. Default `false`. |
 
 ### Deriving the High-Level Stage
 
@@ -60,7 +62,7 @@ The high-level stage of the plan can be derived from `phase` — no separate fie
 | `plan-review`, `post-plan-review` | Plan review |
 | `create-tasks` | Task creation |
 | `tasks-review`, `post-tasks-review` | Task review |
-| `next-task`, `next-task-tdd`, `continue-task`, `code-review`, `post-code-review` | Implementation |
+| `next-task`, `next-task-tdd`, `complete-task`, `complete-task-tdd`, `continue-task`, `code-review`, `post-code-review` | Implementation |
 | `all-code-review`, `post-all-code-review` | Final review |
 | `complete` | Complete |
 
@@ -70,22 +72,22 @@ The state file follows these transition paths:
 
 **Planning flow (auto-triggered after `new-plan`):**
 ```
-new-plan → [STOP HOOK] plan-review (iter 1, opus) → [BLOCK] post-plan-review → [STOP HOOK] plan-review (iter 2, sonnet) → ... → create-tasks
+new-plan → [STOP HOOK] plan-review (iter 1, opus) → [BLOCK] post-plan-review → [STOP HOOK] plan-review (iter 2, sonnet) → ... → [USER STOP] → create-tasks
 ```
 
 **Task creation flow (auto-triggered after `create-tasks`):**
 ```
-create-tasks → [STOP HOOK] tasks-review (iter 1, opus) → [BLOCK] post-tasks-review → [STOP HOOK] tasks-review (iter 2, sonnet) → ... → next-task
+create-tasks → [STOP HOOK] tasks-review (iter 1, opus) → [BLOCK] post-tasks-review → [STOP HOOK] tasks-review (iter 2, sonnet) → ... → [USER STOP] → complete-task
 ```
 
 **Implementation flow (complete-task):**
 ```
-next-task → [STOP HOOK] code-review (iter 1, opus) → [BLOCK] post-code-review → [STOP HOOK] code-review (iter 2, sonnet) → ... → next-task (next task, iter resets) → ... → [STOP HOOK] all-code-review (iter 1, opus) → [BLOCK] post-all-code-review → ... → complete
+complete-task → [STOP HOOK] code-review (iter 1, opus) → [BLOCK] post-code-review → [STOP HOOK] code-review (iter 2, sonnet) → ... → [USER STOP] → complete-task (next task, iter resets) → ... → [STOP HOOK] all-code-review (iter 1, opus) → [BLOCK] post-all-code-review → ... → complete
 ```
 
 **Implementation flow (complete-task-tdd):**
 ```
-next-task-tdd → [STOP HOOK] code-review (iter 1, opus) → [BLOCK] post-code-review → [STOP HOOK] code-review (iter 2, sonnet) → ... → next-task-tdd (next task, iter resets) → ... → [STOP HOOK] all-code-review (iter 1, opus) → [BLOCK] post-all-code-review → ... → complete
+complete-task-tdd → [STOP HOOK] code-review (iter 1, opus) → [BLOCK] post-code-review → [STOP HOOK] code-review (iter 2, sonnet) → ... → [USER STOP] → complete-task-tdd (next task, iter resets) → ... → [STOP HOOK] all-code-review (iter 1, opus) → [BLOCK] post-all-code-review → ... → complete
 ```
 
 **Interrupted task resumption:**
@@ -114,11 +116,12 @@ The "standalone = null" rule only applies to implementation and review commands 
 **Model alternation**: `opus` → `sonnet` → `opus` → `sonnet` → ... Model always resets to `opus` at the start of each new review cycle (strongest model first). Each action that enters a review cycle (`new-plan`, `create-tasks`, `complete-task`, `complete-task-tdd`) initializes `review_model: "opus"`.
 
 **Auto-advance boundaries** (require two consecutive clean reviews):
-- After plan review passes (2 clean) → auto-advance to `create-tasks` (no user intervention needed)
-- After tasks review passes (2 clean) → auto-advance to first `next-task` (no user intervention needed)
-- After code review passes for a task (2 clean) → auto-advance to next task's implementation (no user intervention)
-- After last task's code review passes (2 clean) → auto-advance to `all-code-review` (final cross-task review)
-- After all-code-review passes (2 clean) → set `phase: "complete"`, `next_phase: null`, agent stops
+- After plan review passes (2 clean) → **user stop**. The hook sets `next_phase: "create-tasks"` and approves the stop. The agent stops and waits for the user to review the plan and run `continue-plan` (which routes to `create-tasks`). The user gets a chance to read the plan before tasks are created.
+- After tasks review passes (2 clean) → **user stop**. The hook sets `next_phase` to the `complete-task` variant (based on `tdd` field) and approves the stop. The user gets a chance to review the tasks before implementation begins.
+- After code review passes for a task (2 clean) → **user stop**. The hook sets `next_phase` to the `complete-task` variant and approves the stop. The user gets a chance to review the implemented code before the next task starts. If no tasks remain, the hook sets `next_phase: "all-code-review"` instead.
+- After all-code-review passes (2 clean) → set `phase: "complete"`, `next_phase: null`, agent stops.
+
+In all user-stop cases, the agent approves the stop (no block), the user sees the agent stop, reviews the work, and runs `continue-plan` when ready. The `continue-plan` action reads `next_phase` from state and routes to the correct next step.
 
 **Skipping all-code-review for small plans**: For 1-2 task plans where each task was already thoroughly reviewed, the all-code-review cycle may be redundant. To skip it, the user can edit `state.json` after the last task's code review completes and set `phase: "complete"`, `next_phase: null`. This is left as a manual choice rather than automatic to avoid silently skipping reviews for plans that happen to be small but still benefit from cross-task review.
 
@@ -159,13 +162,13 @@ The unified hook follows this logic:
 3. Find the most recently modified plan directory. The heuristic uses `find` with `\( -name "*.md" -o -name "state.json" \) -printf '%T@ %h\n'` to consider both Markdown files and `state.json` modification times. Without including `state.json`, writes to the state file alone (e.g. during automated review cycles) wouldn't update which plan the hook identifies as most recent.
 4. Read `state.json` — if missing or malformed, fall through to validation only
 5. Check if `next_phase` is a review phase (`plan-review`, `tasks-review`, `code-review`, `all-code-review`):
-   a. **Special case: `max_reviews == 0`** — skip all reviews. Set `next_phase` to the advance target (same mapping as step 5g: `"create-tasks"` for plan review, `"next-task"` for tasks/code review, `"complete"` for all-code-review). Set `phase` to the review phase. Write state atomically and **approve** the stop. Do NOT increment `phase_iteration`, do NOT invoke `claude`. This is the "no reviews" escape hatch.
+   a. **Special case: `max_reviews == 0`** — skip all reviews. Set `next_phase` to the advance target (same mapping as step 5g: `"create-tasks"` for plan review, `"complete-task"` or `"complete-task-tdd"` (based on `tdd` field) for tasks/code review, `"complete"` for all-code-review). Set `phase` to the review phase. Write state atomically and **approve** the stop. Do NOT increment `phase_iteration`, do NOT invoke `claude`. This is the "no reviews" escape hatch.
    b. Increment `phase_iteration` (from 0 to 1 for the first review)
    c. Check if incremented `phase_iteration` <= `max_reviews` — if NOT, skip to step 6 (limit reached, hard stop)
    d. Invoke `claude` CLI to perform the review (see CLI invocation below). The review file is named `*-review-${phase_iteration}.md`.
    e. Verify the review file was written to disk. If not (CLI failure), log warning and skip to step 6.
    f. Determine if the review is "clean" (no issues found). The hook extracts the verdict from the CLI's structured JSON output (captured in step 5d): `VERDICT=$(echo "$CLI_OUTPUT" | jq -r '.result.verdict')`. If `VERDICT` is `"PASS"`, the review is clean — increment `consecutive_clean`. If `"FAIL"` or any other value (including parse failure), the review has issues — reset `consecutive_clean` to 0.
-   g. If `consecutive_clean >= 2`: auto-advance. Update `state.json` atomically with ALL modified fields: set `phase` to the review phase, `next_phase` to the advance target, `phase_iteration` (incremented), `review_model` (toggled), `consecutive_clean` (incremented). The advance target mapping is: `"create-tasks"` for plan review, `"next-task"` for tasks review, `"complete"` for all-code-review. **For code review:** the hook checks `tasks.md` for remaining pending tasks. If tasks remain, `next_phase: "next-task"`. If no tasks remain, `next_phase: "all-code-review"` with `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0` (entering a new review cycle). This check is done by the hook (not the action file) because the hook is programmatic shell code where `grep`/`awk` reliably determines remaining tasks, whereas the action file is a prompt where detection is fragile. Then **approve** the stop (no block).
+   g. If `consecutive_clean >= 2`: auto-advance. Update `state.json` atomically with ALL modified fields: set `phase` to the review phase, `next_phase` to the advance target, `phase_iteration` (incremented), `review_model` (toggled), `consecutive_clean` (incremented). The advance target mapping is: `"create-tasks"` for plan review, `"complete"` for all-code-review. **For tasks review and code review:** the hook reads the `tdd` field from `state.json` to determine the variant — `"complete-task-tdd"` if `tdd` is true, `"complete-task"` if false. For tasks review, this is the advance target directly. **For code review:** the hook also checks `tasks.md` for remaining pending tasks. If tasks remain, `next_phase` is the `complete-task` variant. If no tasks remain, `next_phase: "all-code-review"` with `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0` (entering a new review cycle). This check is done by the hook (not the action file) because the hook is programmatic shell code where `grep`/`awk` reliably determines remaining tasks, whereas the action file is a prompt where detection is fragile. Then **approve** the stop (no block).
    h. If `consecutive_clean < 2`: Update `state.json` atomically (see Atomic State Updates below): set `phase` to the review phase, write the incremented `phase_iteration`, toggle `review_model`, write `consecutive_clean`, set `next_phase` to the corresponding post-review phase. Return a **block** decision with a precise instruction message (see block message template below).
 6. If `next_phase` is NOT a review phase, or `phase_iteration > max_reviews`, or `next_phase` is null:
    a. If `phase_iteration > max_reviews AND max_reviews > 0`: this is a **hard stop**. The agent must wait for user input before proceeding. Do NOT auto-advance to the next phase. (Note: `max_reviews == 0` is handled in step 5a as an early-return — it never reaches step 6.)
@@ -314,24 +317,24 @@ Commands fall into two categories:
         - **For code-review/all-code-review**: read the current task file (`task-{current_task}.md`) and check whether all subtasks are marked complete. If all complete, implementation finished normally — simply stop. If incomplete, agent crashed mid-implementation — execute `continue-task.md`.
         - **For plan-review**: verify `plan.md` exists and appears complete (contains an `## Overview` heading or is > 50 lines). If incomplete or missing, the plan was half-written when the agent crashed — execute `new-plan.md` with a note to continue the existing plan content. If complete, simply stop to trigger the hook.
         - **For tasks-review**: verify `tasks.md` exists and contains actual table rows (at least one `|` line after the header). If incomplete or missing, execute `create-tasks.md` to finish. If complete, simply stop.
-   - `next_phase` = `"next-task"` / `"next-task-tdd"` → execute the next task
+   - `next_phase` = `"complete-task"` / `"complete-task-tdd"` → execute the next task with the automation entry point (which writes `next_phase: "code-review"` after implementation, keeping the loop going)
    - `next_phase` = `"create-tasks"` → execute `create-tasks.md`
    - `next_phase` = `"complete"` → set `phase: "complete"`, `next_phase: null`, inform user all tasks are done
 
    **When `next_phase` is null** (standalone command was interrupted):
-   - `phase` = `"continue-task"` or `"next-task"` or `"next-task-tdd"` → execute `continue-task.md`
+   - `phase` = `"continue-task"` or `"next-task"` or `"next-task-tdd"` or `"complete-task"` or `"complete-task-tdd"` → execute `continue-task.md`
    - `phase` = `"complete"` → inform user all tasks are done
    - **Catch-all**: any other `phase` value (e.g. `"code-review"`, `"plan-review"`, `"post-code-review"`) with `next_phase: null` → inform the user of the current state and ask what to do next. These are standalone commands that were interrupted mid-execution. Since there's no automated follow-up intended (`next_phase` is null), the agent should display the current `phase` and `current_task` values and let the user decide whether to re-run the interrupted command, move to a different phase, or take another action. Git history fallback would produce confusing results here since the state file exists but the automation intent is ambiguous.
 
    **Falls back to git history** only if `state.json` doesn't exist (backwards compatibility with pre-stateful plans).
 
-2. **`new-plan.md`** — After creating `plan.md`, initializes `state.json` with all 7 fields: `max_reviews: 8`, `current_task: null`, `phase: "new-plan"`, `next_phase: "plan-review"`, `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`. This is the only action that constructs `state.json` from scratch (all other actions read-modify-write). Always auto-triggers plan review — there's no scenario where a plan shouldn't be reviewed. **Note to users:** After running `/taskie:new-plan`, an automated review cycle begins immediately. To break out early, set `next_phase: null` in `state.json`.
+2. **`new-plan.md`** — After creating `plan.md`, initializes `state.json` with all 8 fields: `max_reviews: 8`, `current_task: null`, `phase: "new-plan"`, `next_phase: "plan-review"`, `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`, `tdd: false`. This is the only action that constructs `state.json` from scratch (all other actions read-modify-write). Always auto-triggers plan review — there's no scenario where a plan shouldn't be reviewed. **Note to users:** After running `/taskie:new-plan`, an automated review cycle begins immediately. To break out early, set `next_phase: null` in `state.json`.
 
 3. **`create-tasks.md`** — After creating tasks, updates `state.json` (read-modify-write): set `phase: "create-tasks"`, `current_task: null`, `next_phase: "tasks-review"`, `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`. Preserve `max_reviews` from existing state. Always auto-triggers tasks review. Also adds `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` reference (currently missing from this action).
 
 4. **`next-task.md`** / **`next-task-tdd.md`** — After implementation, writes `state.json` with `phase: "next-task"` (or `"next-task-tdd"`), sets `current_task`, sets `next_phase: null`. These are standalone commands — they do NOT trigger auto-review and contain NO conditional logic. They always set `next_phase: null`. The transition to `all-code-review` when no tasks remain is handled by the hook (see step 5g), not by the action file. This keeps `next-task.md` simple and avoids dual code paths within a single action.
 
-5. **`complete-task.md`** / **`complete-task-tdd.md`** — These are the automation entry points. They contain their OWN implementation instructions (inlining the relevant parts of `next-task.md` / `next-task-tdd.md`) rather than delegating. This eliminates the fragile cross-prompt conditional where `next-task.md` would need to detect whether it was invoked standalone or as a delegate. The duplication is small (~10 lines of implementation instructions) and the reliability gain is significant. `complete-task` writes `state.json` ONCE after implementation finishes: `max_reviews` (preserved from existing state), `current_task: "{id}"`, `phase: "next-task"`, `next_phase: "code-review"`, `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`. When the main agent then tries to stop, the hook takes over and runs the review loop. The action itself no longer contains a Phase 2/3/4 loop — the hook handles it. **Note:** This replaces the existing 3-cycle review cap in `complete-task.md` with the global `max_reviews` setting (default 8). The cap is now enforced by the hook, not by the action prompt. The higher default allows more thorough automated review cycles since the two-consecutive-clean exit condition typically terminates earlier.
+5. **`complete-task.md`** / **`complete-task-tdd.md`** — These are the automation entry points. They contain their OWN implementation instructions (inlining the relevant parts of `next-task.md` / `next-task-tdd.md`) rather than delegating. This eliminates the fragile cross-prompt conditional where `next-task.md` would need to detect whether it was invoked standalone or as a delegate. The duplication is small (~10 lines of implementation instructions) and the reliability gain is significant. `complete-task` writes `state.json` ONCE after implementation finishes: `max_reviews` (preserved from existing state), `current_task: "{id}"`, `phase: "complete-task"`, `next_phase: "code-review"`, `phase_iteration: 0`, `review_model: "opus"`, `consecutive_clean: 0`, `tdd: false`. `complete-task-tdd` writes the same but with `phase: "complete-task-tdd"` and `tdd: true`. When the main agent then tries to stop, the hook takes over and runs the review loop. The action itself no longer contains a Phase 2/3/4 loop — the hook handles it. **Note:** This replaces the existing 3-cycle review cap in `complete-task.md` with the global `max_reviews` setting (default 8). The cap is now enforced by the hook, not by the action prompt. The higher default allows more thorough automated review cycles since the two-consecutive-clean exit condition typically terminates earlier.
 
 6. **`code-review.md`** — When invoked standalone, writes review and sets `next_phase: null`. When invoked by the hook, the hook manages the state transitions (the action itself doesn't need to update `state.json` since the hook does it).
 
@@ -375,9 +378,9 @@ The existing `validate-ground-rules.sh` is being absorbed into the unified `stop
 
 The `state.json` file does NOT need special handling for filename validation — the existing validation only iterates over `*.md` files, so `state.json` is already ignored by rule 2.
 
-A new validation rule (rule 8) is added: if `state.json` exists, validate that it is valid JSON and contains the required fields (`phase`, `next_phase`, `review_model`, `max_reviews`, `consecutive_clean`). If validation fails, log a warning but do NOT block the stop — a corrupt state file should not prevent the user from stopping.
+A new validation rule (rule 8) is added: if `state.json` exists, validate that it is valid JSON and contains the required fields (`phase`, `next_phase`, `review_model`, `max_reviews`, `consecutive_clean`, `tdd`). If validation fails, log a warning but do NOT block the stop — a corrupt state file should not prevent the user from stopping.
 
-**Forward-compatibility**: The hook reads all `state.json` fields using `jq` default operators (e.g. `(.consecutive_clean // 0)`, `(.max_reviews // 8)`, `(.review_model // "opus")`) so that missing fields from older state files are handled gracefully with sensible defaults. This avoids the need for a formal schema version number — new fields can be added in future versions without breaking existing state files.
+**Forward-compatibility**: The hook reads all `state.json` fields using `jq` default operators (e.g. `(.consecutive_clean // 0)`, `(.max_reviews // 8)`, `(.review_model // "opus")`, `(.tdd // false)`) so that missing fields from older state files are handled gracefully with sensible defaults. This avoids the need for a formal schema version number — new fields can be added in future versions without breaking existing state files.
 
 ## Testing
 
@@ -529,7 +532,7 @@ Tests the core auto-review decision logic in `stop-hook.sh`. All tests use the m
 | 7 | Max reviews with custom limit | `{..., phase_iteration: 3, max_reviews: 3, ...}` | approve (limit reached, hard stop) |
 | 8 | state.json missing | no state.json file | approve (falls through to validation only) |
 | 9 | state.json malformed | `"not json"` | approve (falls through to validation only), warning logged |
-| 10 | next_phase is "next-task" (auto-advance, not review) | `{phase: "post-code-review", next_phase: "next-task", ...}` | approve (not a review phase) |
+| 10 | next_phase is "complete-task" (auto-advance, not review) | `{phase: "post-code-review", next_phase: "complete-task", ...}` | approve (not a review phase) |
 | 11 | next_phase is "create-tasks" (auto-advance, not review) | `{phase: "post-plan-review", next_phase: "create-tasks", ...}` | approve (not a review phase) |
 | 12 | Trigger all-code-review | `{phase: "post-code-review", next_phase: "all-code-review", phase_iteration: 0, ..., consecutive_clean: 0}` | block, reason contains "all-code-review-1.md" |
 | 13 | One clean review — not enough to advance | `MOCK_CLAUDE_VERDICT=PASS`, `consecutive_clean: 0` | block (consecutive_clean becomes 1, still < 2), reason contains post-review instruction |
@@ -552,12 +555,12 @@ Tests that the hook correctly updates `state.json` after running a review. All t
 | 8 | current_task preserved | `{..., current_task: "3"}` | `{..., current_task: "3"}` (unchanged) |
 | 9 | consecutive_clean incremented on clean review | `{..., consecutive_clean: 0}`, `MOCK_CLAUDE_VERDICT=PASS` | `{..., consecutive_clean: 1}` |
 | 10 | consecutive_clean reset on review with issues | `{..., consecutive_clean: 1}`, `MOCK_CLAUDE_VERDICT=FAIL` | `{..., consecutive_clean: 0}` |
-| 11 | Two clean code reviews → auto-advance to next-task | `{..., consecutive_clean: 1, next_phase: "code-review"}`, `MOCK_CLAUDE_VERDICT=PASS` | `{..., next_phase: "next-task"}` (auto-advanced, not "post-code-review") |
+| 11 | Two clean code reviews → auto-advance to complete-task | `{..., consecutive_clean: 1, next_phase: "code-review", tdd: false}`, `MOCK_CLAUDE_VERDICT=PASS` | `{..., next_phase: "complete-task"}` (auto-advanced, not "post-code-review") |
 | 12 | Two clean plan reviews → auto-advance to create-tasks | `{..., consecutive_clean: 1, next_phase: "plan-review"}`, `MOCK_CLAUDE_VERDICT=PASS` | `{..., next_phase: "create-tasks"}` |
-| 13 | Two clean tasks reviews → auto-advance to next-task | `{..., consecutive_clean: 1, next_phase: "tasks-review"}`, `MOCK_CLAUDE_VERDICT=PASS` | `{..., next_phase: "next-task"}` |
+| 13 | Two clean tasks reviews → auto-advance to complete-task | `{..., consecutive_clean: 1, next_phase: "tasks-review", tdd: false}`, `MOCK_CLAUDE_VERDICT=PASS` | `{..., next_phase: "complete-task"}` |
 | 14 | Two clean all-code-reviews → auto-advance to complete | `{..., consecutive_clean: 1, next_phase: "all-code-review"}`, `MOCK_CLAUDE_VERDICT=PASS` | `{..., next_phase: "complete"}` |
 | 15 | Auto-advance writes all modified fields | `{..., consecutive_clean: 1, phase_iteration: 3, review_model: "opus"}`, `MOCK_CLAUDE_VERDICT=PASS` | `{..., phase_iteration: 4, review_model: "sonnet", consecutive_clean: 2}` (all fields updated, not stale) |
-| 16 | Atomic write: state.json is valid JSON after update | any review trigger | read state.json after hook — must be valid JSON parseable by `jq` with all 7 required fields present |
+| 16 | Atomic write: state.json is valid JSON after update | any review trigger | read state.json after hook — must be valid JSON parseable by `jq` with all 8 required fields present |
 
 ### Test Suite 4: CLI Invocation (test-stop-hook-cli-invocation.sh)
 
@@ -604,7 +607,7 @@ Tests that the `reason` in the block decision contains the correct information f
 | 5 | Concurrent plan creation | state.json exists but plan.md doesn't (user just initialized) | validation blocks for missing plan.md (rule 1) |
 | 6 | Auto-review takes precedence over validation | `next_phase: "code-review"` but plan dir has nested files | hook runs review and blocks for post-review (validation is NOT reached — it only runs when the hook falls through to step 6). Nested files would be caught on a subsequent stop when `next_phase` is no longer a review phase. |
 | 7 | Empty plan directory | `.taskie/plans/` exists but no plan subdirectories | approve (no plan to validate) |
-| 8 | max_reviews is 0 (skip reviews, advance state) | `{..., max_reviews: 0, phase_iteration: 0, next_phase: "code-review"}` | approve, state.json updated: `next_phase: "next-task"` (auto-advanced to advance target), mock claude NOT invoked, `phase_iteration` unchanged at 0 |
+| 8 | max_reviews is 0 (skip reviews, advance state) | `{..., max_reviews: 0, phase_iteration: 0, next_phase: "code-review", tdd: false}` | approve, state.json updated: `next_phase: "complete-task"` (auto-advanced to advance target), mock claude NOT invoked, `phase_iteration` unchanged at 0 |
 | 9 | Backwards compatibility: no state.json, valid plan | plan.md + tasks.md, no state.json | approve (validation only, no auto-review) |
 | 10 | Full model alternation across 4 iterations | invoke hook 4 times with mock CLI, simulating post-review between each | MOCK_CLAUDE_LOG shows: opus, sonnet, opus, sonnet. state.json review_model alternates correctly after each. |
 | 11 | Two consecutive clean reviews auto-advance (integration) | invoke hook twice with `MOCK_CLAUDE_VERDICT=PASS` (consecutive_clean: 0 → 1 → 2) | first hook blocks, second hook approves and sets next_phase to advance target |
