@@ -4,23 +4,41 @@
 
 set -euo pipefail
 
+# Check for required dependencies
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required but not installed. Install it with: apt-get install jq" >&2
+    exit 2
+fi
+
 # Read hook input from stdin
 EVENT=$(cat)
+
+# Validate JSON input
+if ! echo "$EVENT" | jq empty 2>/dev/null; then
+    echo "Error: Invalid JSON input from hook event" >&2
+    exit 2
+fi
+
 STOP_HOOK_ACTIVE=$(echo "$EVENT" | jq -r '.stop_hook_active // false')
 
 # Prevent infinite loops - always approve if already in continuation
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
-    echo '{"decision": "approve"}'
+    echo '{"suppressOutput": true}'
     exit 0
 fi
 
 # Get project directory
 PROJECT_DIR=$(echo "$EVENT" | jq -r '.cwd // "."')
-cd "$PROJECT_DIR"
+
+# Change to project directory with error handling
+if ! cd "$PROJECT_DIR" 2>/dev/null; then
+    echo "Error: Cannot change to project directory: $PROJECT_DIR" >&2
+    exit 2
+fi
 
 # Check if .taskie directory exists (skip validation if not using Taskie)
 if [ ! -d ".taskie/plans" ]; then
-    echo '{"decision": "approve"}'
+    echo '{"suppressOutput": true}'
     exit 0
 fi
 
@@ -135,20 +153,20 @@ RECENT_PLAN=$(find .taskie/plans -mindepth 2 -maxdepth 2 -type f -name "*.md" -p
 
 # If no plan files found, approve
 if [ -z "$RECENT_PLAN" ]; then
-    echo '{"decision": "approve"}'
+    echo '{"suppressOutput": true}'
     exit 0
 fi
 
 # Validate only the most recently modified plan
+PLAN_NAME=$(basename "$RECENT_PLAN")
 set +e
 PLAN_ERROR=$(validate_plan_structure "$RECENT_PLAN" 2>&1)
 PLAN_RESULT=$?
 set -e
 
 if [ $PLAN_RESULT -eq 0 ]; then
-    echo '{"decision": "approve"}'
+    echo "{\"systemMessage\": \"Plan '$PLAN_NAME' structure validated successfully\", \"suppressOutput\": true}"
 else
-    PLAN_NAME=$(basename "$RECENT_PLAN")
     jq -n --arg reason "Plan '$PLAN_NAME': $PLAN_ERROR" '{
         "decision": "block",
         "reason": $reason
