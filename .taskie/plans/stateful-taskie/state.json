@@ -2,7 +2,8 @@
   "max_reviews": 8,
   "current_task": null,
   "phase": "post-plan-review",
-  "phase_iteration": 2,
+  "phase_iteration": 3,
   "next_phase": "plan-review",
-  "review_model": "opus"
+  "review_model": "opus",
+  "consecutive_clean": 0
 }
