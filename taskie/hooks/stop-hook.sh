@@ -125,7 +125,192 @@ if [ -f "$STATE_FILE" ]; then
                 exit 0
             fi
 
-            # TODO: Implement steps 5b-h (CLI invocation, verdict extraction, etc.) in subsequent subtasks
+            # Step 5b: Increment phase_iteration
+            PHASE_ITERATION=$((PHASE_ITERATION + 1))
+
+            # Step 5c: Check if max_reviews exceeded (hard stop)
+            if [ "$PHASE_ITERATION" -gt "$MAX_REVIEWS" ]; then
+                echo "{\"systemMessage\": \"Max review limit ($MAX_REVIEWS) reached for $REVIEW_TYPE. Edit state.json to adjust max_reviews or set next_phase manually.\", \"suppressOutput\": true}"
+                exit 0
+            fi
+
+            # Step 5d: Prepare for CLI invocation
+            REVIEW_FILE="$RECENT_PLAN/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
+            LOG_FILE="$RECENT_PLAN/.review-${PHASE_ITERATION}.log"
+
+            # Build task file list for tasks-review and all-code-review
+            TASK_FILE_LIST=""
+            if [[ "$REVIEW_TYPE" = "tasks-review" || "$REVIEW_TYPE" = "all-code-review" ]]; then
+                if [ -f "$RECENT_PLAN/tasks.md" ]; then
+                    TASK_FILE_LIST=$(grep '^|' "$RECENT_PLAN/tasks.md" | tail -n +3 | awk -F'|' -v plan="$PLAN_ID" '{gsub(/[[:space:]]/, "", $2); if ($2 ~ /^[0-9]+$/) printf ".taskie/plans/%s/task-%s.md ", plan, $2}')
+                fi
+                # Check for empty list
+                if [ -z "$TASK_FILE_LIST" ]; then
+                    echo "Warning: No task files found for $REVIEW_TYPE, skipping review" >&2
+                    echo '{"systemMessage": "No task files found, skipping review", "suppressOutput": true}'
+                    exit 0
+                fi
+            fi
+
+            # For code-review, check if task file exists
+            if [ "$REVIEW_TYPE" = "code-review" ]; then
+                TASK_FILE="$RECENT_PLAN/task-${CURRENT_TASK}.md"
+                if [ ! -f "$TASK_FILE" ]; then
+                    echo "Warning: Task file task-${CURRENT_TASK}.md not found, skipping review" >&2
+                    echo '{"systemMessage": "Task file not found, skipping review", "suppressOutput": true}'
+                    exit 0
+                fi
+            fi
+
+            # Build prompt based on review type
+            case "$REVIEW_TYPE" in
+                plan-review)
+                    PROMPT="Review the plan in .taskie/plans/${PLAN_ID}/plan.md. Be critical and thorough. Look for ambiguities, missing details, architectural issues, and potential problems. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
+                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/plan.md"
+                    ;;
+                tasks-review)
+                    PROMPT="Review the tasks in .taskie/plans/${PLAN_ID}/tasks.md and the task files: ${TASK_FILE_LIST}. Be critical and thorough. Look for missing subtasks, unclear acceptance criteria, incorrect estimates, and implementation issues. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
+                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/tasks.md $TASK_FILE_LIST"
+                    ;;
+                code-review)
+                    PROMPT="Review the implementation for task ${CURRENT_TASK} documented in .taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}.md. Be very critical. Look for bugs, mistakes, incomplete implementations, security issues, and code quality problems. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
+                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}.md"
+                    ;;
+                all-code-review)
+                    PROMPT="Review ALL implementations across ALL tasks documented in .taskie/plans/${PLAN_ID}/tasks.md and task files: ${TASK_FILE_LIST}. Be extremely critical. Look for bugs, integration issues, incomplete features, and overall code quality. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
+                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/tasks.md $TASK_FILE_LIST"
+                    ;;
+            esac
+
+            # Invoke claude CLI
+            CLI_OUTPUT=""
+            if command -v claude &> /dev/null; then
+                set +e
+                CLI_OUTPUT=$(claude --print \
+                    --model "$REVIEW_MODEL" \
+                    --output-format json \
+                    --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}' \
+                    --dangerously-skip-permissions \
+                    "$PROMPT" $FILES_TO_REVIEW 2>"$LOG_FILE")
+                CLI_EXIT=$?
+                set -e
+
+                # Step 5e: Verify review file was written
+                if [ $CLI_EXIT -eq 0 ] && [ -f "$REVIEW_FILE" ]; then
+                    # Success - clean up log file
+                    rm -f "$LOG_FILE"
+
+                    # Step 5f: Extract verdict from CLI output
+                    VERDICT=$(echo "$CLI_OUTPUT" | jq -r '.result.verdict' 2>/dev/null || echo "")
+
+                    # Update consecutive_clean based on verdict
+                    if [ "$VERDICT" = "PASS" ]; then
+                        CONSECUTIVE_CLEAN=$((CONSECUTIVE_CLEAN + 1))
+                    else
+                        # FAIL or parse error
+                        CONSECUTIVE_CLEAN=0
+                    fi
+
+                    # Step 5g: Check for auto-advance (consecutive_clean >= 2)
+                    if [ "$CONSECUTIVE_CLEAN" -ge 2 ]; then
+                        # Determine advance target based on review type
+                        case "$REVIEW_TYPE" in
+                            plan-review)
+                                ADVANCE_TARGET="create-tasks"
+                                ;;
+                            tasks-review)
+                                if [ "$TDD" = "true" ]; then
+                                    ADVANCE_TARGET="complete-task-tdd"
+                                else
+                                    ADVANCE_TARGET="complete-task"
+                                fi
+                                ;;
+                            code-review)
+                                # Check if more tasks remain
+                                TASKS_REMAIN=$(grep '^|' "$RECENT_PLAN/tasks.md" 2>/dev/null | tail -n +3 | awk -F'|' -v cur="$CURRENT_TASK" '{gsub(/[[:space:]]/, "", $2); if ($2 != cur) print $3}' | grep -i 'pending' | wc -l)
+                                if [ "$TASKS_REMAIN" -gt 0 ]; then
+                                    if [ "$TDD" = "true" ]; then
+                                        ADVANCE_TARGET="complete-task-tdd"
+                                    else
+                                        ADVANCE_TARGET="complete-task"
+                                    fi
+                                else
+                                    # No tasks remain, go to all-code-review with fresh cycle
+                                    ADVANCE_TARGET="all-code-review"
+                                    # Reset for fresh review cycle
+                                    PHASE_ITERATION=0
+                                    REVIEW_MODEL="opus"
+                                    CONSECUTIVE_CLEAN=0
+                                fi
+                                ;;
+                            all-code-review)
+                                ADVANCE_TARGET="complete"
+                                ;;
+                        esac
+
+                        # Write state atomically for auto-advance
+                        TEMP_STATE=$(mktemp)
+                        jq --arg phase "$REVIEW_TYPE" \
+                           --arg next_phase "$ADVANCE_TARGET" \
+                           --argjson phase_iteration "$PHASE_ITERATION" \
+                           --arg review_model "$REVIEW_MODEL" \
+                           --argjson consecutive_clean "$CONSECUTIVE_CLEAN" \
+                           --argjson max_reviews "$MAX_REVIEWS" \
+                           --arg current_task "$CURRENT_TASK" \
+                           --argjson tdd "$TDD" \
+                           '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .max_reviews = $max_reviews | .current_task = $current_task | .tdd = $tdd' \
+                           "$STATE_FILE" > "$TEMP_STATE"
+                        mv "$TEMP_STATE" "$STATE_FILE"
+
+                        # Approve with message
+                        echo "{\"systemMessage\": \"${REVIEW_TYPE} passed. Run /taskie:continue-plan to proceed.\", \"suppressOutput\": true}"
+                        exit 0
+                    fi
+
+                    # Step 5h: Non-advance - update state and block
+                    # Toggle review model
+                    if [ "$REVIEW_MODEL" = "opus" ]; then
+                        NEW_REVIEW_MODEL="sonnet"
+                    else
+                        NEW_REVIEW_MODEL="opus"
+                    fi
+
+                    # Determine post-review phase
+                    POST_REVIEW_PHASE="post-${REVIEW_TYPE}"
+
+                    # Write state atomically
+                    TEMP_STATE=$(mktemp)
+                    jq --arg phase "$REVIEW_TYPE" \
+                       --arg next_phase "$POST_REVIEW_PHASE" \
+                       --argjson phase_iteration "$PHASE_ITERATION" \
+                       --arg review_model "$NEW_REVIEW_MODEL" \
+                       --argjson consecutive_clean "$CONSECUTIVE_CLEAN" \
+                       --argjson max_reviews "$MAX_REVIEWS" \
+                       --arg current_task "$CURRENT_TASK" \
+                       --argjson tdd "$TDD" \
+                       '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .max_reviews = $max_reviews | .current_task = $current_task | .tdd = $tdd' \
+                       "$STATE_FILE" > "$TEMP_STATE"
+                    mv "$TEMP_STATE" "$STATE_FILE"
+
+                    # Return block decision with template
+                    BLOCK_REASON="Review found issues. See ${REVIEW_FILE}. Run /taskie:${POST_REVIEW_PHASE} to address them. Escape hatch: edit state.json to set next_phase manually if needed."
+
+                    jq -n --arg reason "$BLOCK_REASON" '{
+                        "decision": "block",
+                        "reason": $reason
+                    }'
+                    exit 0
+                else
+                    # CLI failed or review file missing
+                    echo "Warning: Review failed (exit $CLI_EXIT) or review file not written" >&2
+                    echo '{"systemMessage": "Review failed, proceeding without review", "suppressOutput": true}'
+                    exit 0
+                fi
+            else
+                echo "Warning: claude CLI not found, skipping review" >&2
+                echo '{"systemMessage": "claude CLI not available, skipping review", "suppressOutput": true}'
+                exit 0
+            fi
         fi
     fi
 fi

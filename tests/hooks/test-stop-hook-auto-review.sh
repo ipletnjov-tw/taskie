@@ -30,9 +30,74 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# TODO: Test 1-3: Review triggers for plan/tasks/code review (Subtask 3.2)
-# TODO: Test 6-7: all-code-review trigger, max reviews reached (Subtask 3.2)
-# TODO: Test 12: all-code-review with no task files (Subtask 3.2)
+# Test 1: plan-review triggers
+MOCK_LOG=$(mktemp)
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="plan-review-1.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+# TODO: Once verdict extraction is implemented, check for block decision
+# For now, just verify CLI was called
+if [ -f "$MOCK_LOG" ] && [ -f "$TEST_DIR/.taskie/plans/test-plan/plan-review-1.md" ]; then
+    pass "plan-review triggers CLI invocation"
+else
+    fail "plan-review did not trigger correctly"
+fi
+cleanup
+
+# Test 2: tasks-review triggers
+MOCK_LOG=$(mktemp)
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1 | pending |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-tasks-review", "next_phase": "tasks-review", "review_model": "sonnet", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="tasks-review-1.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ -f "$MOCK_LOG" ] && [ -f "$TEST_DIR/.taskie/plans/test-plan/tasks-review-1.md" ]; then
+    pass "tasks-review triggers CLI invocation"
+else
+    fail "tasks-review did not trigger correctly"
+fi
+cleanup
+
+# Test 3: code-review triggers
+MOCK_LOG=$(mktemp)
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-2.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 2, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ -f "$MOCK_LOG" ] && [ -f "$TEST_DIR/.taskie/plans/test-plan/code-review-1.md" ]; then
+    pass "code-review triggers CLI invocation"
+else
+    fail "code-review did not trigger correctly"
+fi
+cleanup
 
 # Test 4: Standalone mode (no state.json) falls through to validation
 TEST_DIR=$(mktemp -d)
@@ -108,6 +173,69 @@ if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "validated success
     pass "Empty next_phase falls through to validation"
 else
     fail "Empty next_phase not handled correctly (exit $HOOK_EXIT_CODE)"
+fi
+cleanup
+
+# Test 6: all-code-review triggers
+MOCK_LOG=$(mktemp)
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1 | done |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-all-code-review", "next_phase": "all-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="all-code-review-1.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ -f "$MOCK_LOG" ] && [ -f "$TEST_DIR/.taskie/plans/test-plan/all-code-review-1.md" ]; then
+    pass "all-code-review triggers CLI invocation"
+else
+    fail "all-code-review did not trigger correctly"
+fi
+cleanup
+
+# Test 7: Max reviews within limit allows review
+MOCK_LOG=$(mktemp)
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 5, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 4}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="plan-review-5.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ -f "$MOCK_LOG" ] && [ -f "$TEST_DIR/.taskie/plans/test-plan/plan-review-5.md" ]; then
+    pass "Max reviews within limit (5/5) allows review"
+else
+    fail "Max reviews within limit failed"
+fi
+cleanup
+
+# Test 12: all-code-review with no task files skips review
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+EOF
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-all-code-review", "next_phase": "all-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "No task files found"; then
+    pass "all-code-review with no task files skips review"
+else
+    fail "all-code-review empty list not handled correctly"
 fi
 cleanup
 
