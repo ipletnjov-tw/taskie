@@ -67,7 +67,7 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
     - all-code-review → `complete` (letting `continue-plan` handle final phase transition to `phase: "complete"`, `next_phase: null`)
   - Auto-advance approves the stop (no block) — user stop point
   - Approve output includes `systemMessage` informing the user what happened and what to do next (e.g. "Code review passed. Run /taskie:continue-plan to proceed.")
-  - Remaining tasks check: `grep '^|' tasks.md | grep -v "^| *${CURRENT_TASK} " | awk -F'|' '{print $3}' | grep -i 'pending' | wc -l` — extracts status column (3rd field), excluding the current task row to avoid counting it. If count > 0, tasks remain.
+  - Remaining tasks check: `grep '^|' tasks.md | tail -n +3 | awk -F'|' -v cur="${CURRENT_TASK}" '{gsub(/[[:space:]]/, "", $2); if ($2 != cur) print $3}' | grep -i 'pending' | wc -l` — skips header rows, extracts status column (3rd field) for all tasks except current (exact Id match on stripped column 2), avoids partial matches that would incorrectly exclude task 10/11/12 when current is task 1. If count > 0, tasks remain.
 
 ### Subtask 3.4: Implement block message templates and state update for non-advance (step 5h)
 - **Short description**: When `consecutive_clean < 2`, write state atomically (set `phase` to review phase, `next_phase` to post-review phase, incremented `phase_iteration`, toggled `review_model`, `consecutive_clean`). Return block decision with the correct template per review type. Templates must include: review file path, post-review action name, state.json update instructions (read-modify-write, temp file + mv), escape hatch note. Model alternation: `opus` ↔ `sonnet`.
@@ -89,8 +89,8 @@ Implement the core auto-review system in `stop-hook.sh`: state detection (step 5
   - Block message contains: review file path, post-review action, state.json instructions, escape hatch
   - Four distinct templates for code-review, plan-review, tasks-review, all-code-review
 
-### Subtask 3.5: Write test suites 2-5
-- **Short description**: Implement all tests for suites 2 (auto-review logic, 15 tests), 3 (state transitions, 16 tests), 4 (CLI invocation, 14 tests), and 5 (block message templates, 6 tests) as specified in the plan. Tests use the mock `claude` CLI and shared helpers. Each test creates its own temp directory and cleans up in a trap. **Write tests alongside implementation**: as you complete each implementation subtask (3.1-3.4), immediately write and commit the corresponding tests. This ensures immediate feedback and prevents late discovery of integration issues. For example: write and commit suite 2 tests 4-5, 8-11 immediately after completing 3.1; write and commit suite 4 tests immediately after completing 3.2, etc.
+### Subtask 3.5: Verify test suites 2-5 (tracking/verification subtask)
+- **Short description**: This is a tracking/verification subtask to ensure all tests for suites 2-5 are present and passing after subtasks 3.1-3.4 complete. Tests should be written and committed alongside each implementation subtask (3.1-3.4), NOT deferred to a separate phase. **Implementation approach**: As you complete each implementation subtask, immediately write and commit the corresponding tests. For example: write and commit suite 2 tests 4-5, 8-11 immediately after completing 3.1; write and commit suite 4 tests immediately after completing 3.2. This subtask serves as the final verification that all 51 tests exist and pass, not as a separate implementation phase.
 - **Status**: pending
 - **Sample git commit message**: Tests should be committed incrementally with each implementation subtask (e.g., "Add suite 2 tests for state detection and max_reviews logic", "Add suite 4 tests for CLI invocation", etc.)
 - **Git commit hash**:

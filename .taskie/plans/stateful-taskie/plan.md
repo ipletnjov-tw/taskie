@@ -403,6 +403,7 @@ tests/
 │   ├── test-stop-hook-auto-review.sh            # NEW: auto-review logic tests
 │   ├── test-stop-hook-state-transitions.sh      # NEW: state.json transition tests
 │   ├── test-stop-hook-cli-invocation.sh         # NEW: claude CLI mocking tests
+│   ├── test-stop-hook-edge-cases.sh             # NEW: edge cases & integration tests
 │   └── helpers/
 │       ├── mock-claude.sh                       # NEW: mock claude CLI
 │       └── test-utils.sh                        # NEW: shared test helpers
