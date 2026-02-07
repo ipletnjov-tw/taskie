@@ -267,22 +267,226 @@ A new validation rule (rule 8) is added: if `state.json` exists, validate that i
 
 ## Testing
 
-### Existing tests
-The existing tests in `tests/hooks/test-validate-ground-rules.sh` must continue to pass — the validation rules 1-7 are preserved in the unified hook.
+### Test Infrastructure Changes
 
-### New tests needed
-- **State file validation**: Test that `state.json` is accepted (not rejected) as a file in plan directories. Test that invalid JSON in `state.json` produces a warning but does not block the stop.
-- **Unified stop hook**: Test the full logic of `stop-hook.sh`:
-  - When `stop_hook_active` is true → approve immediately
-  - When `.taskie/plans` doesn't exist → approve
-  - When `state.json` is missing → fall through to validation only
-  - When `next_phase` is a review phase and `phase_iteration` < `max_reviews` → block (mock `claude` CLI)
-  - When `next_phase` is null → validate and approve
-  - When `phase_iteration` >= `max_reviews` → validate and approve
-  - Model alternation: verify `review_model` toggles correctly
-  - `phase_iteration` reset when `current_task` changes
-- **Claude CLI mocking**: Tests for the hook must mock the `claude` CLI (e.g. a shell script that creates a dummy review file) to avoid actual API calls. Test that the hook handles CLI failures gracefully (non-zero exit, timeout).
-- **Block message templates**: Verify the `reason` field contains the expected file paths and instructions for each review type (code, plan, tasks).
+#### File Organization
+
+The current test tree has a single file. The new structure:
+
+```
+tests/
+├── README.md                                    # Updated with new test descriptions
+├── hooks/
+│   ├── test-validate-ground-rules.sh            # RENAMED: test-stop-hook-validation.sh
+│   ├── test-stop-hook-auto-review.sh            # NEW: auto-review logic tests
+│   ├── test-stop-hook-state-transitions.sh      # NEW: state.json transition tests
+│   ├── test-stop-hook-cli-invocation.sh         # NEW: claude CLI mocking tests
+│   └── helpers/
+│       ├── mock-claude.sh                       # NEW: mock claude CLI
+│       └── test-utils.sh                        # NEW: shared test helpers
+```
+
+#### Test Runner Updates
+
+`run-tests.sh` must be updated to:
+- Accept a new test suite argument: `./run-tests.sh state` for state-related tests only
+- Run all test files in `tests/hooks/` matching `test-*.sh` when `hooks` or `all` is specified
+- Support running a single test file: `./run-tests.sh tests/hooks/test-stop-hook-auto-review.sh`
+
+`Makefile` gets new targets:
+- `make test-state` — run only state/auto-review tests
+- `make test-validation` — run only validation rule tests (the existing ones)
+
+#### Shared Test Helpers (`tests/hooks/helpers/test-utils.sh`)
+
+Extract common patterns from `test-validate-ground-rules.sh` into a shared helper:
+
+```bash
+# Shared functions:
+# - pass(message)           — log green checkmark, increment counter
+# - fail(message)           — log red X, increment counter
+# - create_test_plan(dir)   — create a minimal valid plan directory with plan.md + tasks.md
+# - create_state_json(dir, json_content) — write state.json to a plan dir
+# - run_hook(json_input)    — pipe JSON to the hook script, capture stdout+stderr+exit code
+# - assert_approved(result) — verify hook approved the stop (exit 0, no block decision)
+# - assert_blocked(result, reason_pattern) — verify hook blocked with matching reason
+# - print_results()         — print pass/fail summary, exit 1 if any failures
+```
+
+The existing `test-validate-ground-rules.sh` will be refactored to use these helpers (reducing duplication) and renamed to `test-stop-hook-validation.sh` since the hook script it tests is now `stop-hook.sh`.
+
+#### Mock Claude CLI (`tests/hooks/helpers/mock-claude.sh`)
+
+A shell script placed on PATH during tests that simulates the `claude` CLI:
+
+```bash
+#!/bin/bash
+# Mock claude CLI for testing
+# Behavior is controlled by environment variables:
+#   MOCK_CLAUDE_EXIT_CODE — exit code to return (default: 0)
+#   MOCK_CLAUDE_REVIEW_DIR — directory to write the review file to
+#   MOCK_CLAUDE_REVIEW_FILE — filename of the review file to write
+#   MOCK_CLAUDE_DELAY — seconds to sleep before responding (for timeout tests)
+#   MOCK_CLAUDE_LOG — file to append invocation args to (for verifying correct flags)
+
+# Log the invocation for verification
+echo "$@" >> "${MOCK_CLAUDE_LOG:-/dev/null}"
+
+# Simulate delay if requested
+if [ -n "${MOCK_CLAUDE_DELAY:-}" ]; then
+    sleep "$MOCK_CLAUDE_DELAY"
+fi
+
+# Write a dummy review file if configured
+if [ -n "${MOCK_CLAUDE_REVIEW_DIR:-}" ] && [ -n "${MOCK_CLAUDE_REVIEW_FILE:-}" ]; then
+    cat > "${MOCK_CLAUDE_REVIEW_DIR}/${MOCK_CLAUDE_REVIEW_FILE}" << 'REVIEW'
+# Review
+## Issues Found
+1. Minor: variable naming inconsistency
+REVIEW
+fi
+
+exit "${MOCK_CLAUDE_EXIT_CODE:-0}"
+```
+
+Tests prepend the mock directory to PATH so `command -v claude` finds the mock instead of the real CLI:
+
+```bash
+MOCK_DIR=$(mktemp -d)
+cp "$HELPERS_DIR/mock-claude.sh" "$MOCK_DIR/claude"
+chmod +x "$MOCK_DIR/claude"
+export PATH="$MOCK_DIR:$PATH"
+```
+
+### Test Suite 1: Validation Rules (test-stop-hook-validation.sh)
+
+These are the existing 13 tests, ported to test `stop-hook.sh` instead of `validate-ground-rules.sh`. All expected behaviors remain identical — the validation logic is preserved unchanged within the unified hook.
+
+| # | Test | Input | Expected |
+|---|------|-------|----------|
+| 1 | jq dependency check | N/A | pass if jq installed |
+| 2 | Invalid JSON input | `"invalid json"` | exit 2, stderr mentions "Invalid JSON" |
+| 3 | Invalid directory | `{"cwd": "/nonexistent"}` | exit 2, stderr mentions "Cannot change" |
+| 4 | stop_hook_active | `{"stop_hook_active": true}` | exit 0, suppressOutput |
+| 5 | No .taskie directory | valid cwd, no `.taskie/plans` | exit 0, suppressOutput |
+| 6 | Valid plan structure | plan.md + tasks.md (table) | exit 0, systemMessage "validated" |
+| 7 | Missing plan.md + invalid filename | only `invalid-file.md` | exit 0, decision: block |
+| 8 | Nested directories | plan.md + nested/extra.md | exit 0, decision: block, "nested" |
+| 9 | Review without base file | plan.md + design-review-1.md (no design.md) | exit 0, decision: block |
+| 10 | Post-review without review | plan.md + plan-post-review-1.md (no plan-review-1.md) | exit 0, decision: block |
+| 11 | Task files without tasks.md | plan.md + task-1.md (no tasks.md) | exit 0, decision: block |
+| 12 | Non-table tasks.md | plan.md + tasks.md with prose | exit 0, decision: block, "non-table" |
+| 13 | Empty tasks.md | plan.md + empty tasks.md | exit 0, decision: block, "no table rows" |
+
+**Additional validation test for state.json:**
+
+| # | Test | Input | Expected |
+|---|------|-------|----------|
+| 14 | state.json is not rejected by filename validation | plan.md + state.json | exit 0, validated (state.json is not `.md`, so it's ignored by rule 2) |
+| 15 | Invalid state.json produces warning | plan.md + state.json with `"not valid json"` | exit 0, validated (warning logged but not blocking) |
+| 16 | state.json missing required fields | plan.md + state.json `{"phase": "new-plan"}` (missing other fields) | exit 0, validated (warning logged but not blocking) |
+| 17 | Valid state.json passes schema validation | plan.md + complete valid state.json | exit 0, validated (no warning) |
+
+### Test Suite 2: Auto-Review Logic (test-stop-hook-auto-review.sh)
+
+Tests the core auto-review decision logic in `stop-hook.sh`. All tests use the mock `claude` CLI.
+
+| # | Test | state.json content | Expected |
+|---|------|-------------------|----------|
+| 1 | Trigger code review | `{phase: "next-task", next_phase: "code-review", phase_iteration: 0, max_reviews: 8, review_model: "opus", current_task: "1"}` | block, reason contains "task-1-review-1.md", mock claude invoked |
+| 2 | Trigger plan review | `{phase: "new-plan", next_phase: "plan-review", phase_iteration: 0, max_reviews: 8, review_model: "opus", current_task: null}` | block, reason contains "plan-review-1.md", mock claude invoked |
+| 3 | Trigger tasks review | `{phase: "create-tasks", next_phase: "tasks-review", phase_iteration: 0, max_reviews: 8, review_model: "opus", current_task: null}` | block, reason contains "tasks-review-1.md", mock claude invoked |
+| 4 | next_phase is null (standalone) | `{phase: "next-task", next_phase: null, ...}` | approve (falls through to validation), mock claude NOT invoked |
+| 5 | next_phase is post-code-review (not a review phase) | `{phase: "code-review", next_phase: "post-code-review", ...}` | approve (post-review is done by the main agent, not the hook) |
+| 6 | Max reviews reached | `{phase: "post-code-review", next_phase: "code-review", phase_iteration: 8, max_reviews: 8, ...}` | approve (falls through to validation), mock claude NOT invoked |
+| 7 | Max reviews with custom limit | `{..., phase_iteration: 3, max_reviews: 3, ...}` | approve (limit reached) |
+| 8 | state.json missing | no state.json file | approve (falls through to validation only) |
+| 9 | state.json malformed | `"not json"` | approve (falls through to validation only), warning logged |
+| 10 | next_phase is "next-task" (auto-advance, not review) | `{phase: "post-code-review", next_phase: "next-task", ...}` | approve (not a review phase) |
+| 11 | next_phase is "create-tasks" (auto-advance, not review) | `{phase: "post-plan-review", next_phase: "create-tasks", ...}` | approve (not a review phase) |
+| 12 | Trigger all-code-review | `{phase: "post-code-review", next_phase: "all-code-review", phase_iteration: 0, ...}` | block, reason contains "all-code-review-1.md" |
+
+### Test Suite 3: State Transitions (test-stop-hook-state-transitions.sh)
+
+Tests that the hook correctly updates `state.json` after running a review. All tests use the mock `claude` CLI.
+
+| # | Test | Initial state.json | Expected state.json after hook |
+|---|------|--------------------|---------------------------------|
+| 1 | Code review: phase updated | `{phase: "next-task", next_phase: "code-review", phase_iteration: 0, review_model: "opus", current_task: "1"}` | `{phase: "code-review", next_phase: "post-code-review", phase_iteration: 1, review_model: "sonnet", current_task: "1"}` |
+| 2 | Plan review: phase updated | `{phase: "new-plan", next_phase: "plan-review", phase_iteration: 0, review_model: "opus", current_task: null}` | `{phase: "plan-review", next_phase: "post-plan-review", phase_iteration: 1, review_model: "sonnet", current_task: null}` |
+| 3 | Tasks review: phase updated | `{phase: "create-tasks", next_phase: "tasks-review", phase_iteration: 0, review_model: "opus"}` | `{phase: "tasks-review", next_phase: "post-tasks-review", phase_iteration: 1, review_model: "sonnet"}` |
+| 4 | Model alternation opus→sonnet | `{..., review_model: "opus", phase_iteration: 0}` | `{..., review_model: "sonnet", phase_iteration: 1}` |
+| 5 | Model alternation sonnet→opus | `{..., review_model: "sonnet", phase_iteration: 1, next_phase: "code-review"}` | `{..., review_model: "opus", phase_iteration: 2}` |
+| 6 | Iteration increment | `{..., phase_iteration: 4, next_phase: "code-review"}` | `{..., phase_iteration: 5}` |
+| 7 | max_reviews preserved | `{..., max_reviews: 5}` | `{..., max_reviews: 5}` (unchanged) |
+| 8 | current_task preserved | `{..., current_task: "3"}` | `{..., current_task: "3"}` (unchanged) |
+
+### Test Suite 4: CLI Invocation (test-stop-hook-cli-invocation.sh)
+
+Tests that the hook invokes the `claude` CLI with the correct flags and arguments. Uses `MOCK_CLAUDE_LOG` to capture invocation args.
+
+| # | Test | Scenario | Verify in MOCK_CLAUDE_LOG |
+|---|------|----------|---------------------------|
+| 1 | Model flag: opus | `review_model: "opus"` | `--model opus` appears in args |
+| 2 | Model flag: sonnet | `review_model: "sonnet"` | `--model sonnet` appears in args |
+| 3 | Permissions bypass | any review trigger | `--dangerously-skip-permissions` in args |
+| 4 | Print flag | any review trigger | `--print` in args |
+| 5 | Allowed tools | any review trigger | `--allowedTools` with `Read Grep Glob Write Bash` in args |
+| 6 | Code review prompt contains task reference | code review for task 3 | prompt contains `task-3.md` and `task-3-review-` |
+| 7 | Plan review prompt contains plan reference | plan review | prompt contains `plan.md` and `plan-review-` |
+| 8 | Tasks review prompt contains tasks reference | tasks review | prompt contains `tasks.md` and `tasks-review-` |
+| 9 | Review file written to correct path | code review for task 2, iteration 3 | file `task-2-review-3.md` exists in plan directory |
+| 10 | Claude CLI not on PATH | remove mock from PATH | hook approves (falls through to validation), warning logged to stderr |
+| 11 | Claude CLI fails (exit 1) | `MOCK_CLAUDE_EXIT_CODE=1` | hook approves (falls through to validation), warning logged |
+| 12 | Claude CLI fails to write review file | `MOCK_CLAUDE_REVIEW_DIR` not set (mock writes nothing) | hook approves (falls through to validation), warning logged |
+| 13 | Claude CLI timeout | `MOCK_CLAUDE_DELAY=5` with hook timeout shorter | hook approves (falls through), warning logged |
+
+### Test Suite 5: Block Message Templates (part of test-stop-hook-auto-review.sh)
+
+Tests that the `reason` in the block decision contains the correct information for each review type.
+
+| # | Test | Review type | Verify in reason field |
+|---|------|-------------|----------------------|
+| 1 | Code review block message | code-review, task 2, iter 3 | contains `task-2-review-3.md`, `post-code-review`, `state.json` |
+| 2 | Plan review block message | plan-review, iter 1 | contains `plan-review-1.md`, `post-plan-review`, `plan.md` |
+| 3 | Tasks review block message | tasks-review, iter 2 | contains `tasks-review-2.md`, `post-tasks-review`, `tasks.md` |
+| 4 | All-code-review block message | all-code-review, iter 1 | contains `all-code-review-1.md`, `post-all-code-review` |
+| 5 | Block message includes plan directory | any review | contains the actual plan directory name (not a placeholder) |
+| 6 | Block message is valid JSON | any review | `jq` can parse the full hook output, `.decision` = `"block"` |
+
+### Test Suite 6: Edge Cases & Integration
+
+| # | Test | Scenario | Expected |
+|---|------|----------|----------|
+| 1 | Multiple plan directories | two plan dirs, one more recently modified | hook validates/reviews only the most recent plan |
+| 2 | state.json with extra unknown fields | `{phase: "next-task", ..., "custom_field": 42}` | hook works normally, ignores unknown fields |
+| 3 | Phase iteration is null (non-review phase, standalone) | `{phase: "next-task", phase_iteration: null, next_phase: null}` | approve (standalone, no review) |
+| 4 | review_model is unexpected value | `{..., review_model: "haiku"}` | hook passes it to `--model haiku` (CLI handles validation) |
+| 5 | Concurrent plan creation | state.json exists but plan.md doesn't (user just initialized) | validation blocks for missing plan.md (rule 1) |
+| 6 | Combined: auto-review + validation failure | `next_phase: "code-review"` but plan dir has nested files | hook runs review first, then validation catches nested files → block with validation error |
+| 7 | Empty plan directory | `.taskie/plans/` exists but no plan subdirectories | approve (no plan to validate) |
+| 8 | max_reviews is 0 | `{..., max_reviews: 0, phase_iteration: 0, next_phase: "code-review"}` | approve immediately (0 means no reviews) |
+| 9 | Backwards compatibility: no state.json, valid plan | plan.md + tasks.md, no state.json | approve (validation only, no auto-review) |
+
+### Expected Test Counts
+
+| Test suite | Count |
+|------------|-------|
+| Validation rules (ported + new) | 17 |
+| Auto-review logic | 12 |
+| State transitions | 8 |
+| CLI invocation | 13 |
+| Block message templates | 6 |
+| Edge cases & integration | 9 |
+| **Total** | **65** |
+
+### Test Execution
+
+All tests must pass with `make test` before any commit. Tests are exempt from versioning (per CLAUDE.md).
+
+Tests that invoke the mock `claude` CLI must clean up the mock from PATH after each test case to avoid polluting subsequent tests. Each test creates its own `mktemp -d` and cleans it in a trap.
+
+No real API calls are ever made during testing. The mock `claude` script is the only "CLI" that runs.
 
 ## Risk Assessment
 
