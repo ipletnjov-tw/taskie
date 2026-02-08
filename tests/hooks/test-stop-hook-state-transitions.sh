@@ -285,15 +285,16 @@ fi
 cleanup
 
 # Test 14: Auto-advance to all-code-review when no tasks remain
-# SKIPPED: This test has a complex interaction bug where the hook doesn't trigger
-# auto-review despite next_phase="code-review". Investigation shows:
-# - Mock claude IS being called and creates review file successfully
-# - Hook returns exit 0 with no output (silent approval)
-# - State.json is NOT updated (remains unchanged)
-# - Suspect: Hook falls through to validation instead of processing review
-# TODO: Debug why auto-review logic isn't triggered in this scenario
-# Issue tracked for future investigation (pre-existing from Task 3)
-pass "Auto-advance to all-code-review (SKIPPED - needs investigation)"
+# KNOWN BUG: This transition does not work. Investigation shows:
+# - Hook receives correct state (post-code-review → code-review, current_task=1, all tasks done)
+# - Hook does NOT update state (state remains unchanged after hook execution)
+# - Hook appears to exit early or fall through to validation without executing review logic
+# - Suspect: Task file check or TASKS_REMAIN calculation prevents review from running
+# - This means the code-review → all-code-review auto-advance path is BROKEN
+# TODO: Debug why hook doesn't trigger review in this scenario (requires deep hook tracing)
+# Marking as FAIL to expose the bug rather than hiding it with SKIP
+# Test retained to document expected behavior once fixed
+fail "KNOWN BUG: Auto-advance to all-code-review is broken (hook doesn't trigger review when all tasks done)"
 cleanup
 
 # Test 15: Auto-advance to complete after all-code-review
