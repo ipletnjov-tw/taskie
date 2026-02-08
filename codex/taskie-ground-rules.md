@@ -31,6 +31,7 @@ Each plan will have the same basic directory structure:
 .taskie/
 ├── plans/
 │   ├── {current-plan-id}/
+│   │   ├── state.json                   # Workflow state (optional, used by automated review cycles)
 │   │   ├── plan.md                      # Implementation Plan Document
 │   │   ├── plan-review-1.md             # Implementation Plan Review 1
 │   │   ├── plan-post-review-1.md        # Post-Review Fixes Summary 1
