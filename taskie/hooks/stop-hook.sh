@@ -45,9 +45,9 @@ if [ ! -d ".taskie/plans" ]; then
     exit 0
 fi
 
-# Find the most recently modified plan directory by file timestamp
+# Find the most recently modified plan directory by file timestamp (portable: works on Linux/macOS/BSD)
 # Include both .md and state.json files in modification time consideration
-RECENT_PLAN=$(find .taskie/plans -mindepth 2 -maxdepth 2 -type f \( -name "*.md" -o -name "state.json" \) -printf '%T@ %h\n' 2>/dev/null | sort -rn | head -1 | awk '{print $2}')
+RECENT_PLAN=$(find .taskie/plans -mindepth 2 -maxdepth 2 -type f \( -name "*.md" -o -name "state.json" \) -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -1 | sed 's|\(\.taskie/plans/[^/]*\)/.*|\1|')
 
 # If no plan files found, approve
 if [ -z "$RECENT_PLAN" ]; then
@@ -69,7 +69,7 @@ if [ -f "$STATE_FILE" ]; then
         MAX_REVIEWS=$(jq -r '(.max_reviews // 8)' "$STATE_FILE" 2>/dev/null)
         CURRENT_TASK=$(jq -r '(.current_task // null)' "$STATE_FILE" 2>/dev/null)
         PHASE=$(jq -r '(.phase // "")' "$STATE_FILE" 2>/dev/null)
-        PHASE_ITERATION=$(jq -r '(.phase_iteration // 0)' "$STATE_FILE" 2>/dev/null)
+        PHASE_ITERATION=$(jq -r '.phase_iteration' "$STATE_FILE" 2>/dev/null)
         NEXT_PHASE=$(jq -r '(.next_phase // "")' "$STATE_FILE" 2>/dev/null)
         REVIEW_MODEL=$(jq -r '(.review_model // "opus")' "$STATE_FILE" 2>/dev/null)
         CONSECUTIVE_CLEAN=$(jq -r '(.consecutive_clean // 0)' "$STATE_FILE" 2>/dev/null)
@@ -125,11 +125,15 @@ if [ -f "$STATE_FILE" ]; then
                 exit 0
             fi
 
-            # Step 5b: Increment phase_iteration
-            PHASE_ITERATION=$((PHASE_ITERATION + 1))
+            # Step 5b: Increment phase_iteration (standalone mode uses null, not 0)
+            if [ "$PHASE_ITERATION" = "null" ] || [ -z "$PHASE_ITERATION" ]; then
+                PHASE_ITERATION=1
+            else
+                PHASE_ITERATION=$((PHASE_ITERATION + 1))
+            fi
 
-            # Step 5c: Check if max_reviews exceeded (hard stop)
-            if [ "$PHASE_ITERATION" -gt "$MAX_REVIEWS" ]; then
+            # Step 5c: Check if max_reviews exceeded (hard stop) - validate numeric first
+            if [ "$MAX_REVIEWS" -eq "$MAX_REVIEWS" ] 2>/dev/null && [ "$PHASE_ITERATION" -gt "$MAX_REVIEWS" ]; then
                 echo "{\"systemMessage\": \"Max review limit ($MAX_REVIEWS) reached for $REVIEW_TYPE. Edit state.json to adjust max_reviews or set next_phase manually.\", \"suppressOutput\": true}"
                 exit 0
             fi
@@ -226,8 +230,12 @@ if [ -f "$STATE_FILE" ]; then
                                 fi
                                 ;;
                             code-review)
-                                # Check if more tasks remain
-                                TASKS_REMAIN=$(grep '^|' "$RECENT_PLAN/tasks.md" 2>/dev/null | tail -n +3 | awk -F'|' -v cur="$CURRENT_TASK" '{gsub(/[[:space:]]/, "", $2); if ($2 != cur) print $3}' | grep -i 'pending' | wc -l)
+                                # Check if more tasks remain (handle missing tasks.md gracefully)
+                                if [ -f "$RECENT_PLAN/tasks.md" ]; then
+                                    TASKS_REMAIN=$(grep '^|' "$RECENT_PLAN/tasks.md" 2>/dev/null | tail -n +3 | awk -F'|' -v cur="$CURRENT_TASK" '{gsub(/[[:space:]]/, "", $2); if ($2 != cur) print $3}' | grep -i 'pending' 2>/dev/null | wc -l || echo 0)
+                                else
+                                    TASKS_REMAIN=0
+                                fi
                                 if [ "$TASKS_REMAIN" -gt 0 ]; then
                                     if [ "$TDD" = "true" ]; then
                                         ADVANCE_TARGET="complete-task-tdd"
@@ -250,13 +258,19 @@ if [ -f "$STATE_FILE" ]; then
 
                         # Write state atomically for auto-advance
                         TEMP_STATE=$(mktemp "${STATE_FILE}.XXXXXX")
+                        # Handle current_task as number or null (not string)
+                        if [ "$CURRENT_TASK" = "null" ] || [ -z "$CURRENT_TASK" ]; then
+                            CURRENT_TASK_JSON="null"
+                        else
+                            CURRENT_TASK_JSON="$CURRENT_TASK"
+                        fi
                         jq --arg phase "$REVIEW_TYPE" \
                            --arg next_phase "$ADVANCE_TARGET" \
                            --argjson phase_iteration "$PHASE_ITERATION" \
                            --arg review_model "$REVIEW_MODEL" \
                            --argjson consecutive_clean "$CONSECUTIVE_CLEAN" \
                            --argjson max_reviews "$MAX_REVIEWS" \
-                           --arg current_task "$CURRENT_TASK" \
+                           --argjson current_task "$CURRENT_TASK_JSON" \
                            --argjson tdd "$TDD" \
                            '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .max_reviews = $max_reviews | .current_task = $current_task | .tdd = $tdd' \
                            "$STATE_FILE" > "$TEMP_STATE"
@@ -280,13 +294,19 @@ if [ -f "$STATE_FILE" ]; then
 
                     # Write state atomically
                     TEMP_STATE=$(mktemp "${STATE_FILE}.XXXXXX")
+                    # Handle current_task as number or null (not string)
+                    if [ "$CURRENT_TASK" = "null" ] || [ -z "$CURRENT_TASK" ]; then
+                        CURRENT_TASK_JSON="null"
+                    else
+                        CURRENT_TASK_JSON="$CURRENT_TASK"
+                    fi
                     jq --arg phase "$REVIEW_TYPE" \
                        --arg next_phase "$POST_REVIEW_PHASE" \
                        --argjson phase_iteration "$PHASE_ITERATION" \
                        --arg review_model "$NEW_REVIEW_MODEL" \
                        --argjson consecutive_clean "$CONSECUTIVE_CLEAN" \
                        --argjson max_reviews "$MAX_REVIEWS" \
-                       --arg current_task "$CURRENT_TASK" \
+                       --argjson current_task "$CURRENT_TASK_JSON" \
                        --argjson tdd "$TDD" \
                        '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .max_reviews = $max_reviews | .current_task = $current_task | .tdd = $tdd' \
                        "$STATE_FILE" > "$TEMP_STATE"
@@ -422,7 +442,7 @@ validate_plan_structure() {
         if ! jq empty "$plan_dir/state.json" 2>/dev/null; then
             echo "Warning: state.json contains invalid JSON" >&2
         else
-            # Validate required fields exist (null is a valid value for next_phase)
+            # Validate required fields exist (null is a valid value for next_phase, current_task, phase_iteration)
             local missing_fields=""
             jq -r 'has("phase")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}phase "
             jq -r 'has("next_phase")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}next_phase "
@@ -430,6 +450,8 @@ validate_plan_structure() {
             jq -r 'has("max_reviews")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}max_reviews "
             jq -r 'has("consecutive_clean")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}consecutive_clean "
             jq -r 'has("tdd")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}tdd "
+            jq -r 'has("current_task")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}current_task "
+            jq -r 'has("phase_iteration")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}phase_iteration "
 
             if [ -n "$missing_fields" ]; then
                 echo "Warning: state.json missing required fields: ${missing_fields}" >&2
