@@ -184,11 +184,13 @@ fi
 cleanup
 
 # Test 8: CLI invoked with correct model for code-review
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
 TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task", "next_phase": "code-review", "review_model": "sonnet", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
 
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
 export MOCK_CLAUDE_VERDICT="PASS"
 export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
 export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"

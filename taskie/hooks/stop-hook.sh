@@ -80,8 +80,8 @@ if [ -f "$STATE_FILE" ]; then
             # Extract review type from next_phase
             REVIEW_TYPE="$NEXT_PHASE"
 
-            # Step 5a: Check max_reviews == 0 (skip reviews)
-            if [ "$MAX_REVIEWS" -eq 0 ]; then
+            # Step 5a: Check max_reviews == 0 (skip reviews) - validate numeric first
+            if [ "$MAX_REVIEWS" -eq "$MAX_REVIEWS" ] 2>/dev/null && [ "$MAX_REVIEWS" -eq 0 ]; then
                 # Determine advance target based on review type
                 case "$REVIEW_TYPE" in
                     plan-review)
@@ -95,8 +95,12 @@ if [ -f "$STATE_FILE" ]; then
                         fi
                         ;;
                     code-review)
-                        # Check if more tasks remain
-                        TASKS_REMAIN=$(grep '^|' "$RECENT_PLAN/tasks.md" 2>/dev/null | tail -n +3 | awk -F'|' -v cur="$CURRENT_TASK" '{gsub(/[[:space:]]/, "", $2); if ($2 != cur) print $3}' | grep -i 'pending' | wc -l)
+                        # Check if more tasks remain (guard against missing tasks.md)
+                        if [ -f "$RECENT_PLAN/tasks.md" ]; then
+                            TASKS_REMAIN=$(grep '^|' "$RECENT_PLAN/tasks.md" 2>/dev/null | tail -n +3 | awk -F'|' -v cur="$CURRENT_TASK" '{gsub(/[[:space:]]/, "", $2); if ($2 != cur) print $3}' | grep -i 'pending' | wc -l)
+                        else
+                            TASKS_REMAIN=0
+                        fi
                         if [ "$TASKS_REMAIN" -gt 0 ]; then
                             if [ "$TDD" = "true" ]; then
                                 ADVANCE_TARGET="complete-task-tdd"
