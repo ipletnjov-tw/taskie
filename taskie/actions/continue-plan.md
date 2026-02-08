@@ -33,7 +33,7 @@ For review phases, use crash recovery to determine if the review was interrupted
 
 - `"plan-review"`:
   1. Check if `phase` field is `"post-plan-review"` → Stop and inform user they were addressing plan review feedback. Ask if they want to continue post-review or trigger a new review.
-  2. Check if `plan.md` exists AND has at least 50 lines → Likely complete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/plan-review.md`
+  2. Check if `plan.md` exists AND (has `## Overview` heading OR ≥50 lines) → Likely complete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/plan-review.md`
   3. Otherwise → Plan likely incomplete or just started, execute `@${CLAUDE_PLUGIN_ROOT}/actions/new-plan.md`
 
 - `"tasks-review"`:

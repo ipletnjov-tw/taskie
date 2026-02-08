@@ -14,7 +14,7 @@ After implementing the fixes, create `.taskie/plans/{current-plan-dir}/tasks-pos
 After implementing fixes, check the workflow context to determine how to update state:
 
 1. Read `.taskie/plans/{current-plan-dir}/state.json`
-2. Check the `phase_iteration` field:
+2. Check the `phase_iteration` field (must be either null or a non-negative integer; if corrupted, inform user and ask how to proceed):
    - **If `phase_iteration` is non-null (a number)**: This is AUTOMATED mode (part of a review cycle)
      - Update `state.json` with:
        - `phase`: `"post-tasks-review"`

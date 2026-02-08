@@ -10,6 +10,8 @@ The implementation plan file MUST contain the original prompt that was presented
 
 **DO NOT** add any timeline estimates (hours, days, weeks) to any part of the plan, task list, task files or subtasks. Also **DO NOT** add any dates or timestamps to any part of the plan or task list.
 
+**Directory setup**: Ensure `.taskie/plans/{current-plan-dir}/` directory exists before writing files. Create it if necessary using `mkdir -p`.
+
 After creating the `plan.md` file, you MUST initialize the workflow state file at `.taskie/plans/{current-plan-dir}/state.json` with the following content:
 
 ```json

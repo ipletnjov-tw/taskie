@@ -8,7 +8,7 @@ Document the results of your review in `.taskie/plans/{current-plan-dir}/code-re
 
 **Review file naming**:
 - For AUTOMATED reviews (invoked by hook): use the `phase_iteration` value from state.json as the iteration number (e.g., `code-review-1.md`, `code-review-2.md`)
-- For STANDALONE reviews (manual invocation): use an incrementing number based on existing review files in the directory
+- For STANDALONE reviews (manual invocation): use max(existing iteration numbers) + 1 from existing review files in the directory
 
 If you don't know what the `{current-plan-dir}` or `{current-task-id}` are, use git history to find out which plan and task was modified most recently.
 
@@ -20,7 +20,7 @@ After completing the review, check the workflow context to determine if this is 
      - Update `state.json` with:
        - `phase`: `"code-review"`
        - `next_phase`: `null` (standalone, no automation)
-       - `phase_iteration`: `null` (explicitly set to prevent stale values)
+       - `phase_iteration`: `null` (marks standalone mode)
        - Preserve all other fields
      - Write atomically (temp file + mv)
    - **If `phase_iteration` is non-null (a number)**: This is an AUTOMATED review (hook-invoked)

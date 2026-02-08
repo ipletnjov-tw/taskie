@@ -43,7 +43,7 @@ After creating all task files, you MUST update the workflow state file at `.task
    - `tdd`: preserve from existing state
 3. Write the updated state atomically using a temp file: write to a temporary file first, then `mv` to `state.json`
 
-Example bash command for atomic write:
+Example bash command for atomic write (note: max_reviews and tdd are preserved automatically by jq since they're not listed in the pipeline):
 ```bash
 TEMP_STATE=$(mktemp)
 jq --arg phase "create-tasks" \

@@ -8,6 +8,8 @@ You MUST follow `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` at ALL times.
 
 Read `.taskie/plans/{current-plan-dir}/tasks.md` and identify the first task with status "pending". This is the task you will implement.
 
+**If no pending tasks exist**: Inform the user that all tasks are complete. Set `phase: "complete"` and `next_phase: null` in state.json, then stop. Do not attempt to implement a non-existent task.
+
 If you don't know the `{current-plan-dir}`, use git history to find the most recently modified plan.
 
 ## Step 2: Implement the task
@@ -39,12 +41,13 @@ After completing implementation, you MUST update the workflow state file at `.ta
    - `max_reviews`: preserve from existing state
 3. Write the updated state atomically using a temp file: write to a temporary file first, then `mv` to `state.json`
 
-Example bash command for atomic write (replace {task-id} with the actual task ID, e.g., "3"):
+Example bash command for atomic write. In this example, task ID is "3" - replace with your actual task ID:
 ```bash
+TASK_ID="3"  # Replace with actual task ID from Step 1
 TEMP_STATE=$(mktemp)
 MAX_REVIEWS=$(jq -r '.max_reviews // 8' state.json)
 jq --arg phase "complete-task" \
-   --arg current_task "{task-id}" \
+   --arg current_task "$TASK_ID" \
    --arg next_phase "code-review" \
    --argjson phase_iteration 0 \
    --arg review_model "opus" \
