@@ -8,19 +8,28 @@ Update `ground-rules.md` with state.json documentation, update Codex CLI prompts
 
 ### Subtask 6.1: Update `ground-rules.md`
 - **Short description**: Add state.json to the documented directory structure, document that `state.json` must be updated after every phase transition, add state file schema reference, note that `state.json` is the authoritative source for "where we are" — not git history.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Update ground-rules.md with state.json documentation
-- **Git commit hash**:
+- **Git commit hash**: 0623ce0 (Claude Code), 7971430 (Codex minimal update)
 - **Priority**: medium
 - **Complexity**: 3
 - **Test approach**: Manual: verify ground-rules mentions state.json in directory structure and documents the state-first approach. `make test` still passes (validation rules unchanged).
 - **Must-run commands**: `make test`
 - **Acceptance criteria**:
-  - `state.json` appears in the documented directory structure
-  - Phase transition state update requirement is documented
-  - Schema reference or summary is included
-  - `state.json` described as authoritative source over git history
-  - Existing ground rules content preserved (additive changes only)
+  - `state.json` appears in the documented directory structure ✅
+  - Phase transition state update requirement is documented ✅
+  - Schema reference or summary is included ✅
+  - `state.json` described as authoritative source over git history ✅
+  - Existing ground rules content preserved (additive changes only) ✅
+
+**Implementation summary**:
+- Updated `taskie/ground-rules.md` (Claude Code) with complete State Management section (lines 105-134)
+- Added state.json to directory structure with description (line 41)
+- Documented 8-field schema with descriptions and valid values
+- Added CRITICAL requirement: state.json MUST be updated after every phase transition
+- Documented state-first approach (prioritize state.json over git history)
+- Updated `codex/taskie-ground-rules.md` with state.json in directory structure (line 33)
+- Codex ground-rules has minimal update since detailed state management is primarily for Claude Code hook-based automation
 
 ### Subtask 6.2: Update Codex CLI prompts
 - **Short description**: Update `taskie-new-plan.md` to initialize `state.json` after plan creation (same as Claude Code variant). Update `taskie-continue-plan.md` to read `state.json` for continuation routing (primary benefit for Codex users). Other Codex prompts are NOT updated — without hooks to enforce state updates, making every prompt manually update `state.json` is fragile.

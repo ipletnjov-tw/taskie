@@ -54,7 +54,7 @@ After completing implementation, you MUST update the workflow state file at `.ta
 Example bash command for atomic write. In this example, task ID is "3" - replace with your actual task ID:
 ```bash
 TASK_ID="3"  # Replace with actual task ID from Step 1
-TEMP_STATE=$(mktemp)
+TEMP_STATE=$(mktemp ".taskie/plans/{current-plan-dir}/state.json.XXXXXX")
 MAX_REVIEWS=$(jq -r '.max_reviews // 8' state.json)
 jq --arg phase "complete-task-tdd" \
    --arg current_task "$TASK_ID" \

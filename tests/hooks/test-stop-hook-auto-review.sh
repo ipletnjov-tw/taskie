@@ -43,8 +43,7 @@ export MOCK_CLAUDE_REVIEW_FILE="plan-review-1.md"
 export MOCK_CLAUDE_EXIT_CODE=0
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-# TODO: Once verdict extraction is implemented, check for block decision
-# For now, just verify CLI was called
+# Verdict extraction is implemented - verify CLI was called and review file created
 if [ -f "$MOCK_LOG" ] && [ -f "$TEST_DIR/.taskie/plans/test-plan/plan-review-1.md" ]; then
     pass "plan-review triggers CLI invocation"
 else

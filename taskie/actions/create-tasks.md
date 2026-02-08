@@ -45,7 +45,7 @@ After creating all task files, you MUST update the workflow state file at `.task
 
 Example bash command for atomic write (note: max_reviews and tdd are preserved automatically by jq since they're not listed in the pipeline):
 ```bash
-TEMP_STATE=$(mktemp)
+TEMP_STATE=$(mktemp ".taskie/plans/{current-plan-dir}/state.json.XXXXXX")
 jq --arg phase "create-tasks" \
    --argjson current_task null \
    --arg next_phase "tasks-review" \

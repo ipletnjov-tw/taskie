@@ -24,11 +24,13 @@ tests/
 └── hooks/
     ├── helpers/
     │   ├── test-utils.sh              # Shared test helper functions
-    │   └── mock-claude.sh             # Mock claude CLI for testing
+    │   ├── mock-claude.sh             # Mock claude CLI for testing
+    │   └── claude                     # Symlink to mock-claude.sh
     ├── test-stop-hook-validation.sh   # Test suite 1: validation rules 1-8
-    ├── test-stop-hook-auto-review.sh  # Test suite 2: auto-review triggers (Task 3)
-    ├── test-stop-hook-state-transitions.sh  # Test suite 3: state transitions (Task 3)
-    └── test-stop-hook-cli-invocation.sh     # Test suite 4: CLI invocation (Task 3)
+    ├── test-stop-hook-auto-review.sh  # Test suites 2 & 5: auto-review triggers
+    ├── test-stop-hook-state-transitions.sh  # Test suite 3: state transitions
+    ├── test-stop-hook-cli-invocation.sh     # Test suite 4: CLI invocation
+    └── test-stop-hook-edge-cases.sh   # Test suite 6: edge cases & integration
 ```
 
 ## Test Suite 1: Validation Rules
@@ -77,9 +79,19 @@ The `test-stop-hook-validation.sh` script validates the unified Stop hook's vali
 
 ## Test Suites 2-5: Auto-Review Logic (Task 3)
 
-Test suites 2-5 will be added in Task 3 to test the automated review functionality:
-- **Suite 2**: Auto-review trigger conditions
-- **Suite 3**: State transitions and phase changes
+Test suites 2-5 test the automated review functionality:
+- **Suite 2 & 5**: Auto-review trigger conditions and block messages (19 tests)
+- **Suite 3**: State transitions and phase changes (14 tests)
+- **Suite 4**: CLI invocation and flags (8 tests)
+
+## Test Suite 6: Edge Cases & Integration (Task 6)
+
+Test suite 6 tests edge cases and integration scenarios:
+- max_reviews=0 handling
+- Auto-advance transitions
+- Model alternation integration
+- State field preservation
+- 12 tests total
 - **Suite 4**: Claude CLI invocation and flags
 - **Suite 5**: Block message templates and error handling
 

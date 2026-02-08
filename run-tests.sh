@@ -52,7 +52,7 @@ case "$TEST_SUITE" in
         ;;
     state)
         echo "Running state/auto-review tests..."
-        for test_file in test-stop-hook-auto-review.sh test-stop-hook-state-transitions.sh test-stop-hook-cli-invocation.sh; do
+        for test_file in test-stop-hook-auto-review.sh test-stop-hook-state-transitions.sh test-stop-hook-cli-invocation.sh test-stop-hook-edge-cases.sh; do
             if [ -f "$SCRIPT_DIR/tests/hooks/$test_file" ]; then
                 echo "Running $test_file..."
                 bash "$SCRIPT_DIR/tests/hooks/$test_file" || exit 1
