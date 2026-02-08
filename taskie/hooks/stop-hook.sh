@@ -280,7 +280,7 @@ if [ -f "$STATE_FILE" ]; then
             log "Checking claude CLI available"
             if command -v claude &> /dev/null; then
                 log "claude CLI found"
-                log "Invoking: claude --model $REVIEW_MODEL --output-format json --dangerously-skip-permissions"
+                log "Invoking: claude --print --model $REVIEW_MODEL --output-format json --dangerously-skip-permissions \"$PROMPT\""
                 set +e
                 CLI_OUTPUT=$(claude --print \
                     --model "$REVIEW_MODEL" \
