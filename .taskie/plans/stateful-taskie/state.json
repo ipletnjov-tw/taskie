@@ -1,10 +1,10 @@
 {
   "max_reviews": 8,
-  "current_task": null,
-  "phase": "post-tasks-review",
-  "phase_iteration": 10,
-  "next_phase": "tasks-review",
+  "current_task": 6,
+  "phase": "complete-task",
+  "phase_iteration": 0,
+  "next_phase": "code-review",
   "review_model": "opus",
-  "consecutive_clean": 1,
+  "consecutive_clean": 0,
   "tdd": false
 }

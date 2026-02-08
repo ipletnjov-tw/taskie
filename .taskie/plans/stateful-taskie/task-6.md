@@ -53,7 +53,7 @@ Update `ground-rules.md` with state.json documentation, update Codex CLI prompts
 - **Short description**: Implement all 12 tests from suite 6: multiple plan directories, unknown fields, null phase_iteration, unexpected review_model, concurrent plan creation, auto-review precedence over validation, empty plan directory, max_reviews=0, backwards compatibility (no state.json), full model alternation across 4 iterations, two consecutive clean integration, atomic write cleanup.
 - **Status**: completed
 - **Sample git commit message**: Add test suite 6 for edge cases and integration tests
-- **Git commit hash**: (to be added after commit)
+- **Git commit hash**: c7daea5
 - **Priority**: medium
 - **Complexity**: 6
 - **Test approach**: Run `make test` and verify all 12 tests pass.
