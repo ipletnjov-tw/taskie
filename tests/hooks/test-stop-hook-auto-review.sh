@@ -379,6 +379,12 @@ cleanup
 # Test 21: tasks-review block message
 TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1  | pending |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "create-tasks", "next_phase": "tasks-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
 export MOCK_CLAUDE_VERDICT="FAIL"
@@ -400,6 +406,12 @@ cleanup
 # Test 22: all-code-review block message
 TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1  | done   |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task", "next_phase": "all-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
 export MOCK_CLAUDE_VERDICT="FAIL"

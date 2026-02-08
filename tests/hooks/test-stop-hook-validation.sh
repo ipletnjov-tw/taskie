@@ -243,7 +243,7 @@ rm -rf "$TEST_DIR"
 # Test 17: Valid state.json produces no warnings
 TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
-create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false}'
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": null}'
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 if [ $HOOK_EXIT_CODE -eq 0 ] && ! echo "$HOOK_STDERR" | grep -q "Warning" && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
