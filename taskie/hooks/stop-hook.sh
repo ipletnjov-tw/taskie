@@ -4,6 +4,12 @@
 
 set -euo pipefail
 
+# Recursion protection - if we're already in a hook subprocess, exit immediately
+if [ "${TASKIE_HOOK_SKIP:-false}" = "true" ]; then
+    echo '{"suppressOutput": true}'
+    exit 0
+fi
+
 # Logging - each invocation gets its own file under .taskie/logs/
 HOOK_LOG=""
 log() {
@@ -253,27 +259,9 @@ if [ -f "$STATE_FILE" ]; then
                 log "Found: $TASK_FILE"
             fi
 
-            # Build prompt based on review type
-            log "Building prompt for $REVIEW_TYPE"
-            case "$REVIEW_TYPE" in
-                plan-review)
-                    PROMPT="Review the plan in .taskie/plans/${PLAN_ID}/plan.md. Be critical and thorough. Look for ambiguities, missing details, architectural issues, and potential problems. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/plan.md"
-                    ;;
-                tasks-review)
-                    PROMPT="Review the tasks in .taskie/plans/${PLAN_ID}/tasks.md and the task files: ${TASK_FILE_LIST}. Be critical and thorough. Look for missing subtasks, unclear acceptance criteria, incorrect estimates, and implementation issues. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/tasks.md $TASK_FILE_LIST"
-                    ;;
-                code-review)
-                    PROMPT="Review the implementation for task ${CURRENT_TASK} documented in .taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}.md. Be very critical. Look for bugs, mistakes, incomplete implementations, security issues, and code quality problems. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}.md"
-                    ;;
-                all-code-review)
-                    PROMPT="Review ALL implementations across ALL tasks documented in .taskie/plans/${PLAN_ID}/tasks.md and task files: ${TASK_FILE_LIST}. Be extremely critical. Look for bugs, integration issues, incomplete features, and overall code quality. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/tasks.md $TASK_FILE_LIST"
-                    ;;
-            esac
-            log "PROMPT=${PROMPT:0:100}... FILES=$FILES_TO_REVIEW"
+            # Build prompt using slash command (single source of truth)
+            PROMPT="/taskie:${REVIEW_TYPE}"
+            log "Using slash command: $PROMPT"
 
             # Invoke claude CLI
             CLI_OUTPUT=""
@@ -281,10 +269,10 @@ if [ -f "$STATE_FILE" ]; then
             if command -v claude &> /dev/null; then
                 log "claude CLI found"
                 JSON_SCHEMA='{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}'
-                CLI_CMD="claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\""
+                CLI_CMD="TASKIE_HOOK_SKIP=true claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\""
                 log "Invoking: $CLI_CMD"
                 set +e
-                CLI_OUTPUT=$(claude --print \
+                CLI_OUTPUT=$(TASKIE_HOOK_SKIP=true claude --print \
                     --model "$REVIEW_MODEL" \
                     --output-format json \
                     --json-schema "$JSON_SCHEMA" \

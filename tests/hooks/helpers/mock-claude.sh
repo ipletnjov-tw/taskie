@@ -8,9 +8,11 @@
 #   MOCK_CLAUDE_DELAY — seconds to sleep before responding (for timeout tests)
 #   MOCK_CLAUDE_LOG — file to append invocation args to (for verifying correct flags)
 
-# Log the invocation for verification
+# Log the invocation for verification (one line per invocation)
 if [ -n "${MOCK_CLAUDE_LOG:-}" ]; then
-    echo "$@" >> "$MOCK_CLAUDE_LOG"
+    # Collapse multi-line args to single line so each invocation = 1 line
+    echo "$*" | tr '\n' ' ' >> "$MOCK_CLAUDE_LOG"
+    echo "" >> "$MOCK_CLAUDE_LOG"
 fi
 
 # Simulate delay if requested
