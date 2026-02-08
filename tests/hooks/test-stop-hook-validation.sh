@@ -253,4 +253,14 @@ else
 fi
 rm -rf "$TEST_DIR"
 
+# Test 18: TASKIE_HOOK_SKIP recursion protection
+export TASKIE_HOOK_SKIP=true
+run_hook '{"cwd": ".", "stop_hook_active": false}' || true || true
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "suppressOutput"; then
+    pass "TASKIE_HOOK_SKIP recursion protection works (exit 0 with suppressOutput)"
+else
+    fail "TASKIE_HOOK_SKIP not handled correctly (exit $HOOK_EXIT_CODE)"
+fi
+unset TASKIE_HOOK_SKIP
+
 print_results
