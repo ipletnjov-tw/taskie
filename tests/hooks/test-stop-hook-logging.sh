@@ -202,8 +202,8 @@ export MOCK_CLAUDE_LOG
 run_hook "{\"cwd\": \"$TEST_DIR\"}" || true
 
 LOG_FILE=$(find "$TEST_DIR/.taskie/logs" -name "hook-*.log" 2>/dev/null | head -1)
-if [ -n "$LOG_FILE" ] && grep -q "Invoking: claude" "$LOG_FILE"; then
-    pass "Test 6: Log contains 'Invoking: claude'"
+if [ -n "$LOG_FILE" ] && grep -q "Invoking:.*claude" "$LOG_FILE"; then
+    pass "Test 6: Log contains CLI invocation"
 else
     fail "Test 6: Log missing CLI invocation line"
     if [ -n "$LOG_FILE" ]; then

@@ -96,7 +96,7 @@ else
 fi
 cleanup
 
-# Test 4: TASK_FILE_LIST construction for tasks-review
+# Test 4: Slash command invocation for tasks-review
 MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
 TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
@@ -121,10 +121,10 @@ export MOCK_CLAUDE_EXIT_CODE=0
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 
-if grep -q "task-1.md" "$MOCK_LOG" && grep -q "task-2.md" "$MOCK_LOG" && grep -q "task-3.md" "$MOCK_LOG"; then
-    pass "TASK_FILE_LIST constructed correctly (all 3 task files)"
+if grep -q "/taskie:tasks-review" "$MOCK_LOG"; then
+    pass "Slash command used correctly (/taskie:tasks-review)"
 else
-    fail "TASK_FILE_LIST incorrect (expected task-1/2/3.md in prompt)"
+    fail "Slash command not found (expected /taskie:tasks-review in prompt)"
 fi
 cleanup
 
