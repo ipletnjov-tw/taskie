@@ -2,9 +2,9 @@
   "max_reviews": 8,
   "current_task": 6,
   "phase": "post-code-review",
-  "phase_iteration": 1,
+  "phase_iteration": 2,
   "next_phase": "code-review",
-  "review_model": "sonnet",
-  "consecutive_clean": 0,
+  "review_model": "opus",
+  "consecutive_clean": 1,
   "tdd": false
 }
