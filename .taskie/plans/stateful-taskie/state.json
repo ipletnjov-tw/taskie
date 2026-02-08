@@ -1,9 +1,9 @@
 {
   "max_reviews": 8,
-  "current_task": 6,
-  "phase": "post-code-review",
-  "phase_iteration": 2,
-  "next_phase": "code-review",
+  "current_task": null,
+  "phase": "complete-task",
+  "phase_iteration": null,
+  "next_phase": "complete",
   "review_model": "opus",
   "consecutive_clean": 1,
   "tdd": false
