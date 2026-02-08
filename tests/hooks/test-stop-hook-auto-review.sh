@@ -2,7 +2,7 @@
 # Test Suite 2: Stop Hook Auto-Review Triggers & Suite 5: Block Messages
 #
 # Tests auto-review trigger conditions and block message templates.
-# This file contains 21 tests total: 15 from suite 2 + 6 from suite 5.
+# This file contains 22 tests total: 15 from suite 2 + 3 consecutive clean + 4 block messages from suite 5.
 
 set -uo pipefail
 
@@ -31,8 +31,8 @@ cleanup() {
 trap cleanup EXIT
 
 # Test 1: plan-review triggers
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -52,8 +52,8 @@ fi
 cleanup
 
 # Test 2: tasks-review triggers
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
@@ -78,8 +78,8 @@ fi
 cleanup
 
 # Test 3: code-review triggers
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 touch "$TEST_DIR/.taskie/plans/test-plan/task-2.md"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 2, "phase_iteration": 0}'
@@ -99,7 +99,7 @@ fi
 cleanup
 
 # Test 4: Standalone mode (no state.json) falls through to validation
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
@@ -111,7 +111,7 @@ fi
 cleanup
 
 # Test 5: Malformed state.json falls through to validation with warning
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 echo "{ invalid json }" > "$TEST_DIR/.taskie/plans/test-plan/state.json"
 
@@ -124,7 +124,7 @@ fi
 cleanup
 
 # Test 8: Non-review next_phase falls through to validation
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "complete-task", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
 
@@ -137,7 +137,7 @@ fi
 cleanup
 
 # Test 9: Post-review next_phase falls through to validation
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "code-review", "next_phase": "post-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": 1, "phase_iteration": 1}'
 
@@ -150,7 +150,7 @@ fi
 cleanup
 
 # Test 10: null next_phase falls through to validation
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 2, "tdd": false, "current_task": 1, "phase_iteration": 0}'
 
@@ -163,7 +163,7 @@ fi
 cleanup
 
 # Test 11: Empty next_phase falls through to validation
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -176,8 +176,8 @@ fi
 cleanup
 
 # Test 6: all-code-review triggers
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
@@ -202,8 +202,8 @@ fi
 cleanup
 
 # Test 7: Max reviews within limit allows review
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 5, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 4}'
 
@@ -222,7 +222,7 @@ fi
 cleanup
 
 # Test 12: all-code-review with no task files skips review
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
@@ -239,7 +239,7 @@ fi
 cleanup
 
 # Test for max_reviews==0 skip (from suite 6, test 8)
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 0, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 5}'
 
@@ -260,13 +260,81 @@ else
 fi
 cleanup
 
-# TODO: Test 13-15: Consecutive clean tracking (Subtask 3.3)
+# Test 13: First PASS increments consecutive_clean from 0 to 1
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="PASS"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+CONSECUTIVE_CLEAN=$(jq -r '.consecutive_clean' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+if [ "$CONSECUTIVE_CLEAN" = "1" ]; then
+    pass "First PASS increments consecutive_clean from 0 to 1"
+else
+    fail "consecutive_clean not incremented (got: $CONSECUTIVE_CLEAN, expected: 1)"
+fi
+cleanup
+
+# Test 14: Second consecutive PASS increments to 2 and triggers auto-advance
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-code-review", "next_phase": "code-review", "review_model": "sonnet", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": 1, "phase_iteration": 1}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="PASS"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="code-review-2.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+CONSECUTIVE_CLEAN=$(jq -r '.consecutive_clean' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+NEXT_PHASE=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+if [ "$CONSECUTIVE_CLEAN" = "2" ] && [ "$NEXT_PHASE" = "complete-task" ]; then
+    pass "Second PASS increments to 2 and auto-advances"
+else
+    fail "Auto-advance failed (consecutive_clean: $CONSECUTIVE_CLEAN, next_phase: $NEXT_PHASE)"
+fi
+cleanup
+
+# Test 15: FAIL after PASS resets consecutive_clean to 0
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-code-review", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": 1, "phase_iteration": 1}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="code-review-2.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+CONSECUTIVE_CLEAN=$(jq -r '.consecutive_clean' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+if [ "$CONSECUTIVE_CLEAN" = "0" ]; then
+    pass "FAIL resets consecutive_clean to 0"
+else
+    fail "consecutive_clean not reset (got: $CONSECUTIVE_CLEAN, expected: 0)"
+fi
+cleanup
 
 # Suite 5: Block message tests
 # Test that block messages contain required elements
 
 # Test: Block message for code-review contains review file, post-review action, escape hatch
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
@@ -288,7 +356,7 @@ fi
 cleanup
 
 # Test 20: plan-review block message
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "new-plan", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -309,7 +377,7 @@ fi
 cleanup
 
 # Test 21: tasks-review block message
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "create-tasks", "next_phase": "tasks-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -330,7 +398,7 @@ fi
 cleanup
 
 # Test 22: all-code-review block message
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task", "next_phase": "all-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -351,7 +419,7 @@ fi
 cleanup
 
 # Test 23: Block decision format verification
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "new-plan", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 

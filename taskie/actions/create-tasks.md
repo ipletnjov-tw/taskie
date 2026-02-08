@@ -31,7 +31,7 @@ Each subtask MUST have the following fields:
 
 After creating all task files, you MUST update the workflow state file at `.taskie/plans/{current-plan-dir}/state.json`:
 
-1. Read the existing `state.json` file to preserve `max_reviews` and `tdd` values
+1. Read the existing `.taskie/plans/{current-plan-dir}/state.json` file to preserve `max_reviews` and `tdd` values
 2. Update the state with the following fields:
    - `phase`: `"create-tasks"`
    - `current_task`: `null` (no task is active yet)
@@ -41,7 +41,7 @@ After creating all task files, you MUST update the workflow state file at `.task
    - `consecutive_clean`: `0` (reset counter)
    - `max_reviews`: preserve from existing state
    - `tdd`: preserve from existing state
-3. Write the updated state atomically using a temp file: write to a temporary file first, then `mv` to `state.json`
+3. Write the updated state atomically using a temp file: write to a temporary file first, then `mv` to `.taskie/plans/{current-plan-dir}/state.json`
 
 Example bash command for atomic write (note: max_reviews and tdd are preserved automatically by jq since they're not listed in the pipeline):
 ```bash
@@ -53,8 +53,8 @@ jq --arg phase "create-tasks" \
    --arg review_model "opus" \
    --argjson consecutive_clean 0 \
    '.phase = $phase | .current_task = $current_task | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean' \
-   state.json > "$TEMP_STATE"
-mv "$TEMP_STATE" state.json
+   .taskie/plans/{current-plan-dir}/state.json > "$TEMP_STATE"
+mv "$TEMP_STATE" .taskie/plans/{current-plan-dir}/state.json
 ```
 
 **Note**: The automated tasks review cycle begins immediately when you stop. The hook will trigger `tasks-review` automatically.

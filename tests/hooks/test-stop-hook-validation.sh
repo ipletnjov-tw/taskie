@@ -67,7 +67,7 @@ else
 fi
 
 # Test 6: Valid plan structure
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
@@ -79,7 +79,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 7: Invalid plan structure (missing plan.md)
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/invalid-file.md" << 'EOF'
 This file has an invalid name.
@@ -94,7 +94,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 8: Nested directories
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 mkdir -p "$TEST_DIR/.taskie/plans/test-plan/nested"
 cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
 # Test Plan
@@ -112,7 +112,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 9: Review file without base file
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
 # Test Plan
@@ -130,7 +130,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 10: Post-review file without review file
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
 # Test Plan
@@ -148,7 +148,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 11: Task files without tasks.md
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
 # Test Plan
@@ -167,7 +167,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 12: tasks.md with non-table content
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
 # Test Plan
@@ -186,7 +186,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 13: Empty tasks.md (no table rows)
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/plan.md" << 'EOF'
 # Test Plan
@@ -202,7 +202,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 14: state.json is not rejected by filename validation
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false}'
 
@@ -215,7 +215,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 15: Invalid JSON in state.json logs warning but doesn't block
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 echo "{ invalid json }" > "$TEST_DIR/.taskie/plans/test-plan/state.json"
 
@@ -228,7 +228,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 16: Missing required fields in state.json logs warning but doesn't block
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"max_reviews": 8}'
 
@@ -241,7 +241,7 @@ fi
 rm -rf "$TEST_DIR"
 
 # Test 17: Valid state.json produces no warnings
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false}'
 

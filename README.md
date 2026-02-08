@@ -62,7 +62,7 @@ All prompts reference `~/.codex/prompts/taskie-ground-rules.md` to load shared g
 
 ### Planning Commands
 - `new-plan` - Create a new implementation plan
-- `continue-plan` - Continue an existing plan from git history
+- `continue-plan` - Continue an existing plan from state.json (with git history fallback)
 - `plan-review` - Review and critique the current plan
 - `post-plan-review` - Address plan review comments
 

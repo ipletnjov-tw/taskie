@@ -50,6 +50,12 @@ Each plan will have the same basic directory structure:
 │   │   ├── . . .
 │   │   ├── tasks-review-n.md            # Task List and Tasks Review n
 │   │   ├── tasks-post-review-n.md       # Post-Review Fixes Summary n
+│   │   ├── code-review-1.md             # Code Review 1 (per-task)
+│   │   ├── code-post-review-1.md        # Code Post-Review Fixes Summary 1
+│   │   ├── . . .
+│   │   ├── all-code-review-1.md         # All-Code Review 1 (all tasks)
+│   │   ├── all-code-post-review-1.md    # All-Code Post-Review Fixes Summary 1
+│   │   ├── . . .
 │   │   ├── task-1.md                    # Task 1 and Subtasks
 │   │   ├── task-1-review-1.md           # Task 1 Review 1
 │   │   ├── task-1-post-review-1.md      # Post-Review Fixes Summary 1

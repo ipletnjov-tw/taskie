@@ -19,8 +19,6 @@ make test-state             # Run state/auto-review tests
 ```
 tests/
 ├── README.md
-├── run-tests.sh
-├── Makefile
 └── hooks/
     ├── helpers/
     │   ├── test-utils.sh              # Shared test helper functions
@@ -31,6 +29,10 @@ tests/
     ├── test-stop-hook-state-transitions.sh  # Test suite 3: state transitions
     ├── test-stop-hook-cli-invocation.sh     # Test suite 4: CLI invocation
     └── test-stop-hook-edge-cases.sh   # Test suite 6: edge cases & integration
+
+Repo root:
+├── run-tests.sh                       # Test runner script
+└── Makefile                           # Test targets
 ```
 
 ## Test Suite 1: Validation Rules
@@ -80,7 +82,7 @@ The `test-stop-hook-validation.sh` script validates the unified Stop hook's vali
 ## Test Suites 2-5: Auto-Review Logic (Task 3)
 
 Test suites 2-5 test the automated review functionality:
-- **Suite 2 & 5**: Auto-review trigger conditions and block messages (19 tests)
+- **Suite 2 & 5**: Auto-review trigger conditions and block messages (22 tests)
 - **Suite 3**: State transitions and phase changes (14 tests)
 - **Suite 4**: CLI invocation and flags (8 tests)
 
@@ -92,12 +94,6 @@ Test suite 6 tests edge cases and integration scenarios:
 - Model alternation integration
 - State field preservation
 - 12 tests total
-- **Suite 4**: Claude CLI invocation and flags
-- **Suite 5**: Block message templates and error handling
-
-## Test Suite 6: Edge Cases & Integration (Task 6)
-
-Test suite 6 will be added in Task 6 to test edge cases and integration scenarios.
 
 ## Shared Test Helpers
 

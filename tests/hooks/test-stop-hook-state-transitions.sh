@@ -28,7 +28,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Test 1: State updated correctly after plan-review FAIL
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -54,7 +54,7 @@ fi
 cleanup
 
 # Test 2: Model alternation opus -> sonnet
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": 1, "phase_iteration": 2}'
@@ -74,7 +74,7 @@ fi
 cleanup
 
 # Test 3: Model alternation sonnet -> opus
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
@@ -99,7 +99,7 @@ fi
 cleanup
 
 # Test 4: tasks-review state updates after FAIL
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
@@ -127,7 +127,7 @@ fi
 cleanup
 
 # Test 5: code-review state updates after FAIL
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
@@ -150,7 +150,7 @@ fi
 cleanup
 
 # Test 6: all-code-review state updates after FAIL
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
@@ -178,7 +178,7 @@ fi
 cleanup
 
 # Test 9: consecutive_clean increments on PASS
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -197,7 +197,7 @@ fi
 cleanup
 
 # Test 10: consecutive_clean resets to 0 on FAIL
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -216,7 +216,7 @@ fi
 cleanup
 
 # Test 11: Auto-advance to create-tasks after 2 clean plan-reviews
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -235,7 +235,7 @@ fi
 cleanup
 
 # Test 12: Auto-advance to complete-task after 2 clean tasks-reviews (tdd=false)
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
@@ -260,7 +260,7 @@ fi
 cleanup
 
 # Test 13: Auto-advance to complete-task-tdd (tdd=true)
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
@@ -285,20 +285,36 @@ fi
 cleanup
 
 # Test 14: Auto-advance to all-code-review when no tasks remain
-# KNOWN BUG: This transition does not work. Investigation shows:
-# - Hook receives correct state (post-code-review → code-review, current_task=1, all tasks done)
-# - Hook does NOT update state (state remains unchanged after hook execution)
-# - Hook appears to exit early or fall through to validation without executing review logic
-# - Suspect: Task file check or TASKS_REMAIN calculation prevents review from running
-# - This means the code-review → all-code-review auto-advance path is BROKEN
-# TODO: Debug why hook doesn't trigger review in this scenario (requires deep hook tracing)
-# Marking as FAIL to expose the bug rather than hiding it with SKIP
-# Test retained to document expected behavior once fixed
-fail "KNOWN BUG: Auto-advance to all-code-review is broken (hook doesn't trigger review when all tasks done)"
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1  | done   |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": 1, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="PASS"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+NEXT=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+ITERATION=$(jq -r '.phase_iteration' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+if [ "$NEXT" = "all-code-review" ] && [ "$ITERATION" = "0" ]; then
+    pass "Auto-advance to all-code-review with fresh cycle (iteration=0)"
+else
+    fail "Auto-advance incorrect: next_phase=$NEXT, iteration=$ITERATION"
+fi
 cleanup
 
 # Test 15: Auto-advance to complete after all-code-review
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
@@ -323,7 +339,7 @@ fi
 cleanup
 
 # Test 16: All fields preserved during state update
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 5, "consecutive_clean": 0, "tdd": true, "current_task": 3, "phase_iteration": 2}'
 

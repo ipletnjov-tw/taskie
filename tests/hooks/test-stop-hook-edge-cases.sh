@@ -31,7 +31,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Test 1: Multiple plan directories - hook validates/reviews only the most recent plan
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/old-plan"
 create_state_json "$TEST_DIR/.taskie/plans/old-plan" '{"phase": "next-task", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": null}'
 sleep 1  # Ensure different mtime
@@ -48,7 +48,7 @@ fi
 cleanup
 
 # Test 2: state.json with extra unknown fields - hook works normally, ignores them
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "next-task", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": null, "custom_field": 42, "extra": "ignored"}'
 
@@ -61,7 +61,7 @@ fi
 cleanup
 
 # Test 3: Phase iteration is null (non-review phase, standalone) - should approve
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "next-task", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": null}'
 
@@ -74,8 +74,8 @@ fi
 cleanup
 
 # Test 4: review_model is unexpected value - hook passes it to CLI (CLI handles validation)
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "haiku", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -94,7 +94,7 @@ fi
 cleanup
 
 # Test 5: Concurrent plan creation - state.json exists but plan.md doesn't (validation blocks)
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 mkdir -p "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "new-plan", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": null}'
 # Note: plan.md does NOT exist
@@ -108,8 +108,8 @@ fi
 cleanup
 
 # Test 6: Auto-review takes precedence over validation - validation NOT reached
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 # Add a nested directory that would trigger validation error (if validation was reached)
 mkdir -p "$TEST_DIR/.taskie/plans/test-plan/nested-dir"
@@ -133,7 +133,7 @@ fi
 cleanup
 
 # Test 7: Empty plan directory - no plan subdirectories, should approve
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 mkdir -p "$TEST_DIR/.taskie/plans"
 # No plan subdirectories exist
 
@@ -146,8 +146,8 @@ fi
 cleanup
 
 # Test 8: max_reviews=0 - auto-advance state without CLI invocation
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-code-review", "next_phase": "code-review", "review_model": "opus", "max_reviews": 0, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
 touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
@@ -168,7 +168,7 @@ fi
 cleanup
 
 # Test 9: Backwards compatibility - no state.json, valid plan (validation only, no auto-review)
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 # Note: state.json does NOT exist
 
@@ -181,8 +181,8 @@ fi
 cleanup
 
 # Test 10: Full model alternation across 4 iterations (integration)
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -239,8 +239,8 @@ fi
 cleanup
 
 # Test 11: Two consecutive clean reviews auto-advance (integration)
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
@@ -280,8 +280,8 @@ fi
 cleanup
 
 # Test 12: Atomic write - no temp files left behind
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 

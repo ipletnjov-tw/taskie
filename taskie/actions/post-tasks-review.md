@@ -23,7 +23,7 @@ After implementing fixes, check the workflow context to determine how to update 
      - Write atomically (temp file + mv)
      - Example (jq automatically preserves all other fields not explicitly set):
        ```bash
-       TEMP_STATE=$(mktemp)
+       TEMP_STATE=$(mktemp /tmp/taskie.XXXXXX)
        jq '.phase = "post-tasks-review" | .next_phase = "tasks-review"' state.json > "$TEMP_STATE"
        mv "$TEMP_STATE" state.json
        ```
@@ -35,7 +35,7 @@ After implementing fixes, check the workflow context to determine how to update 
      - Write atomically (temp file + mv)
      - Example (jq automatically preserves all other fields not explicitly set):
        ```bash
-       TEMP_STATE=$(mktemp)
+       TEMP_STATE=$(mktemp /tmp/taskie.XXXXXX)
        jq --argjson next_phase null '.phase = "post-tasks-review" | .next_phase = $next_phase' state.json > "$TEMP_STATE"
        mv "$TEMP_STATE" state.json
        ```

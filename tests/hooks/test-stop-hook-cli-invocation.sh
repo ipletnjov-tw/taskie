@@ -29,8 +29,8 @@ cleanup() {
 trap cleanup EXIT
 
 # Test 1: CLI invoked with correct flags for plan-review
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -53,8 +53,8 @@ fi
 cleanup
 
 # Test 2: phase_iteration incremented before CLI invocation
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-tasks-review", "next_phase": "tasks-review", "review_model": "sonnet", "max_reviews": 5, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 2}'
 # Add tasks.md
@@ -82,7 +82,7 @@ fi
 cleanup
 
 # Test 3: Max reviews reached - hard stop
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "code-review", "next_phase": "code-review", "review_model": "opus", "max_reviews": 3, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 3}'
 touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
@@ -97,8 +97,8 @@ fi
 cleanup
 
 # Test 4: TASK_FILE_LIST construction for tasks-review
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-tasks-review", "next_phase": "tasks-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
 # Create tasks.md with known task IDs
@@ -129,7 +129,7 @@ fi
 cleanup
 
 # Test 5: Empty TASK_FILE_LIST skips review
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-tasks-review", "next_phase": "tasks-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 # tasks.md exists but no task files
@@ -148,7 +148,7 @@ fi
 cleanup
 
 # Test 6: Missing task file for code-review skips review
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 5, "phase_iteration": 0}'
 # task-5.md doesn't exist
@@ -163,8 +163,8 @@ fi
 cleanup
 
 # Test 7: CLI failure handled gracefully
-MOCK_LOG=$(mktemp)
-TEST_DIR=$(mktemp -d)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
@@ -184,7 +184,7 @@ fi
 cleanup
 
 # Test 8: CLI invoked with correct model for code-review
-TEST_DIR=$(mktemp -d)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task", "next_phase": "code-review", "review_model": "sonnet", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'

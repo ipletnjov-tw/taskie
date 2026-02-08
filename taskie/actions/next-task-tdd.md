@@ -25,7 +25,7 @@ After completing implementation, you MUST update the workflow state file at `.ta
 1. Read the existing `state.json` file
 2. Update the state with the following fields:
    - `phase`: `"next-task-tdd"`
-   - `current_task`: `"{task-id}"` (the task ID you just implemented)
+   - `current_task`: `{current-task-id}` (the task ID you just implemented, as a number not a string)
    - `next_phase`: `null` (standalone mode, no automated workflow)
    - `phase_iteration`: `null` (not in a review cycle)
    - Preserve all other fields: `max_reviews`, `review_model`, `consecutive_clean`, `tdd`

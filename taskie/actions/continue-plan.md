@@ -38,30 +38,30 @@ For review phases, use crash recovery to determine if the review was interrupted
 
 - `"tasks-review"`:
   1. Check if `phase` field is `"post-tasks-review"` → Stop and inform user they were addressing tasks review feedback. Ask if they want to continue post-review or trigger a new review.
-  2. Check if `tasks.md` exists and has at least 3 lines starting with `|` → Tasks likely complete (header + separator + at least one task), execute `@${CLAUDE_PLUGIN_ROOT}/actions/tasks-review.md`
-  3. Otherwise → Tasks likely incomplete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/create-tasks.md`
+  2. Check if `tasks.md` exists and has at least 1 line starting with `|` → Tasks file exists, execute `@${CLAUDE_PLUGIN_ROOT}/actions/tasks-review.md`
+  3. Otherwise → Tasks not created yet, execute `@${CLAUDE_PLUGIN_ROOT}/actions/create-tasks.md`
 
 - `"code-review"`:
   1. Check if `phase` field is `"post-code-review"` → Stop and inform user they were addressing code review feedback. Ask if they want to continue post-review or trigger a new review.
   2. Read `current_task` from state.json. If `current_task` is null or `task-{current_task}.md` doesn't exist, inform user that current task is invalid and ask which task to work on.
-  3. If task file exists, count subtasks: completed_count = subtasks with status exactly "completed"; total_count = all subtasks regardless of status. Calculate completion_pct = (completed_count / total_count) * 100.
-  4. Route based on completion percentage:
-     - If completion_pct ≥ 90% → Assume task is done, execute `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`
-     - If 50% < completion_pct < 90% → Assume task in progress, execute `@${CLAUDE_PLUGIN_ROOT}/actions/continue-task.md`
-     - If completion_pct ≤ 50% OR calculation is ambiguous (e.g., 0 total subtasks) → INFORM USER of the ambiguity and ASK whether to continue implementation or start review
+  3. If task file exists, count subtasks: completed_count = subtasks with status exactly "completed"; total_count = all subtasks regardless of status.
+  4. Route based on completion status:
+     - If ALL subtasks are completed (completed_count == total_count AND total_count > 0) → Task is done, execute `@${CLAUDE_PLUGIN_ROOT}/actions/code-review.md`
+     - If completed_count > 0 but not all complete → Task in progress, execute `@${CLAUDE_PLUGIN_ROOT}/actions/continue-task.md`
+     - If total_count == 0 OR completed_count == 0 → INFORM USER of the ambiguity and ASK whether to continue implementation or start review
 
 - `"all-code-review"`:
   1. Check if `phase` field is `"post-all-code-review"` → Stop and inform user they were addressing all-code review feedback. Ask if they want to continue post-review or trigger a new review.
-  2. Count tasks in `tasks.md`: done_count = tasks with status exactly "done"; active_count = tasks with status "pending" or "done" (exclude "cancelled", "postponed"). Calculate done_pct = (done_count / active_count) * 100.
-  3. Route based on done percentage:
-     - If done_pct ≥ 90% → Assume ready for review, execute `@${CLAUDE_PLUGIN_ROOT}/actions/all-code-review.md`
-     - If done_pct < 90% OR calculation is ambiguous → INFORM USER that X out of Y tasks are done and ASK whether to continue implementation or start review anyway
+  2. Count tasks in `tasks.md`: done_count = tasks with status exactly "done"; active_count = tasks with status "pending" or "done" (exclude "cancelled", "postponed").
+  3. Route based on completion status:
+     - If ALL active tasks are done (done_count == active_count AND active_count > 0) → All tasks complete, execute `@${CLAUDE_PLUGIN_ROOT}/actions/all-code-review.md`
+     - If done_count < active_count → INFORM USER that X out of Y tasks are done and ASK whether to continue implementation or start review anyway
 
 #### Advance targets (action execution)
 - `"create-tasks"` → Execute `@${CLAUDE_PLUGIN_ROOT}/actions/create-tasks.md`
 - `"complete-task"` → Execute `@${CLAUDE_PLUGIN_ROOT}/actions/complete-task.md` (it will determine the next pending task from `tasks.md`)
 - `"complete-task-tdd"` → Execute `@${CLAUDE_PLUGIN_ROOT}/actions/complete-task-tdd.md` (it will determine the next pending task from `tasks.md`)
-- `"complete"` → Implementation is complete. Set `phase: "complete"`, `next_phase: null` in state.json. Inform the user that all tasks are done and suggest next steps:
+- `"complete"` → Implementation is complete. Update state.json atomically: `jq '.phase = "complete" | .next_phase = null' state.json > temp.json && mv temp.json state.json`. Inform the user that all tasks are done and suggest next steps:
   - Review the final implementation
   - Run final integration tests
   - Create a pull request if working in a feature branch

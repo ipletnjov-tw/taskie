@@ -8,14 +8,14 @@ FAIL_COUNT=0
 # Pass a test
 pass() {
     local message="$1"
-    echo "✓ PASS: $message"
+    echo "[PASS] $message"
     PASS_COUNT=$((PASS_COUNT + 1))
 }
 
 # Fail a test
 fail() {
     local message="$1"
-    echo "✗ FAIL: $message"
+    echo "[FAIL] $message"
     FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
@@ -63,8 +63,8 @@ run_hook() {
     local hook_script="${HOOK_SCRIPT:-$project_root/taskie/hooks/stop-hook.sh}"
 
     # Create temp files for capturing output
-    local stdout_file=$(mktemp)
-    local stderr_file=$(mktemp)
+    local stdout_file=$(mktemp /tmp/taskie-test.XXXXXX)
+    local stderr_file=$(mktemp /tmp/taskie-test.XXXXXX)
     local exit_code
 
     # Run the hook
@@ -95,6 +95,15 @@ assert_approved() {
         if echo "$HOOK_STDOUT" | grep -q '"decision"[[:space:]]*:[[:space:]]*"block"'; then
             fail "Expected approval, but found block decision in output"
             return 1
+        fi
+
+        # If there's JSON output, validate structure
+        if echo "$HOOK_STDOUT" | jq empty 2>/dev/null; then
+            # Valid JSON - check for expected fields (suppressOutput or systemMessage)
+            if ! echo "$HOOK_STDOUT" | jq -e 'has("suppressOutput") or has("systemMessage")' >/dev/null 2>&1; then
+                fail "Expected JSON with suppressOutput or systemMessage, got: $HOOK_STDOUT"
+                return 1
+            fi
         fi
     fi
 

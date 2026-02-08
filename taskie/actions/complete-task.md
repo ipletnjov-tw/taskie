@@ -45,9 +45,9 @@ Example bash command for atomic write. In this example, task ID is "3" - replace
 ```bash
 TASK_ID="3"  # Replace with actual task ID from Step 1
 TEMP_STATE=$(mktemp ".taskie/plans/{current-plan-dir}/state.json.XXXXXX")
-MAX_REVIEWS=$(jq -r '.max_reviews // 8' state.json)
+MAX_REVIEWS=$(jq -r '.max_reviews // 8' .taskie/plans/{current-plan-dir}/state.json)
 jq --arg phase "complete-task" \
-   --arg current_task "$TASK_ID" \
+   --argjson current_task "$TASK_ID" \
    --arg next_phase "code-review" \
    --argjson phase_iteration 0 \
    --arg review_model "opus" \
@@ -55,8 +55,8 @@ jq --arg phase "complete-task" \
    --argjson tdd false \
    --argjson max_reviews "$MAX_REVIEWS" \
    '.phase = $phase | .current_task = $current_task | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .tdd = $tdd | .max_reviews = $max_reviews' \
-   state.json > "$TEMP_STATE"
-mv "$TEMP_STATE" state.json
+   .taskie/plans/{current-plan-dir}/state.json > "$TEMP_STATE"
+mv "$TEMP_STATE" .taskie/plans/{current-plan-dir}/state.json
 ```
 
 ## Step 4: Stop and let automation take over

@@ -2,7 +2,7 @@
 
 You will need to continue working on a task in the implementation plan. 
 
-After you're done implementing it, document your progress with a short summary in `.taskie/plans/{current-plan-dir}/task-{next-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.taskie/plans/{current-plan-dir}/tasks.md`.
+After you're done implementing it, document your progress with a short summary in the current task file `.taskie/plans/{current-plan-dir}/task-{current-task-id}.md` and update the status and git commit hash of the subtask(s). Update the task status in `.taskie/plans/{current-plan-dir}/tasks.md`.
 
 After making progress, you MUST update the workflow state file at `.taskie/plans/{current-plan-dir}/state.json`:
 

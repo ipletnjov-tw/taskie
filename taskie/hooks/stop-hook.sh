@@ -105,6 +105,8 @@ if [ -f "$STATE_FILE" ]; then
                             fi
                         else
                             ADVANCE_TARGET="all-code-review"
+                            # Reset for fresh all-code-review cycle
+                            RESET_FOR_ALL_CODE_REVIEW=true
                         fi
                         ;;
                     all-code-review)
@@ -114,11 +116,22 @@ if [ -f "$STATE_FILE" ]; then
 
                 # Write state atomically with phase set to review type and next_phase to advance target
                 TEMP_STATE=$(mktemp "${STATE_FILE}.XXXXXX")
-                jq --arg phase "$REVIEW_TYPE" \
-                   --arg next_phase "$ADVANCE_TARGET" \
-                   --argjson phase_iteration 0 \
-                   '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration' \
-                   "$STATE_FILE" > "$TEMP_STATE"
+                if [ "${RESET_FOR_ALL_CODE_REVIEW:-false}" = "true" ]; then
+                    # Reset review_model and consecutive_clean for fresh all-code-review cycle
+                    jq --arg phase "$REVIEW_TYPE" \
+                       --arg next_phase "$ADVANCE_TARGET" \
+                       --argjson phase_iteration 0 \
+                       --arg review_model "opus" \
+                       --argjson consecutive_clean 0 \
+                       '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean' \
+                       "$STATE_FILE" > "$TEMP_STATE"
+                else
+                    jq --arg phase "$REVIEW_TYPE" \
+                       --arg next_phase "$ADVANCE_TARGET" \
+                       --argjson phase_iteration 0 \
+                       '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration' \
+                       "$STATE_FILE" > "$TEMP_STATE"
+                fi
                 mv "$TEMP_STATE" "$STATE_FILE"
 
                 echo "{\"systemMessage\": \"Reviews disabled (max_reviews=0). Auto-advanced to $ADVANCE_TARGET. Run /taskie:continue-plan to proceed.\", \"suppressOutput\": true}"
@@ -146,7 +159,14 @@ if [ -f "$STATE_FILE" ]; then
             TASK_FILE_LIST=""
             if [[ "$REVIEW_TYPE" = "tasks-review" || "$REVIEW_TYPE" = "all-code-review" ]]; then
                 if [ -f "$RECENT_PLAN/tasks.md" ]; then
-                    TASK_FILE_LIST=$(grep '^|' "$RECENT_PLAN/tasks.md" | tail -n +3 | awk -F'|' -v plan="$PLAN_ID" '{gsub(/[[:space:]]/, "", $2); if ($2 ~ /^[0-9]+$/) printf ".taskie/plans/%s/task-%s.md ", plan, $2}')
+                    # Build list and verify each file exists
+                    RAW_LIST=$(grep '^|' "$RECENT_PLAN/tasks.md" | tail -n +3 | awk -F'|' -v plan="$PLAN_ID" '{gsub(/[[:space:]]/, "", $2); if ($2 ~ /^[0-9]+$/) printf ".taskie/plans/%s/task-%s.md ", plan, $2}')
+                    for task_file in $RAW_LIST; do
+                        if [ -f "$task_file" ]; then
+                            TASK_FILE_LIST="$TASK_FILE_LIST $task_file"
+                        fi
+                    done
+                    TASK_FILE_LIST=$(echo "$TASK_FILE_LIST" | xargs)  # Trim whitespace
                 fi
                 # Check for empty list
                 if [ -z "$TASK_FILE_LIST" ]; then
@@ -312,8 +332,12 @@ if [ -f "$STATE_FILE" ]; then
                        "$STATE_FILE" > "$TEMP_STATE"
                     mv "$TEMP_STATE" "$STATE_FILE"
 
-                    # Return block decision with template
-                    BLOCK_REASON="Review found issues. See ${REVIEW_FILE}. Run /taskie:${POST_REVIEW_PHASE} to address them. Escape hatch: edit state.json to set next_phase manually if needed."
+                    # Return block decision with template (message depends on verdict)
+                    if [ "$VERDICT" = "PASS" ]; then
+                        BLOCK_REASON="Review passed (need 2 consecutive for auto-advance). See ${REVIEW_FILE}. Run /taskie:${POST_REVIEW_PHASE} to continue. Escape hatch: update state.json using 'jq ... state.json > temp.json && mv temp.json state.json' to set next_phase manually."
+                    else
+                        BLOCK_REASON="Review found issues. See ${REVIEW_FILE}. Run /taskie:${POST_REVIEW_PHASE} to address them. Escape hatch: update state.json using 'jq ... state.json > temp.json && mv temp.json state.json' to set next_phase manually."
+                    fi
 
                     jq -n --arg reason "$BLOCK_REASON" '{
                         "decision": "block",
@@ -418,6 +442,13 @@ validate_plan_structure() {
         fi
     fi
 
+    # Rule 7: code-review-*.md files require at least one task file
+    if ls "$plan_dir"/code-review-[0-9]*.md 2>/dev/null | grep -q .; then
+        if ! ls "$plan_dir"/task-*.md 2>/dev/null | grep -v "review" | grep -q .; then
+            add_error "code-review files exist but no task files found"
+        fi
+    fi
+
     # Rule 7: tasks.md must contain ONLY a markdown table
     if [ -f "$plan_dir/tasks.md" ]; then
         local table_error=""
@@ -433,6 +464,12 @@ validate_plan_structure() {
             add_error "$table_error"
         elif ! grep -q "^|" "$plan_dir/tasks.md"; then
             add_error "tasks.md has no table rows"
+        else
+            # Check for at least one data row (header + separator + data = 3 rows minimum)
+            local row_count=$(grep "^|" "$plan_dir/tasks.md" | wc -l)
+            if [ "$row_count" -lt 3 ]; then
+                add_error "tasks.md has no task rows (header-only table)"
+            fi
         fi
     fi
 
