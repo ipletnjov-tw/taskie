@@ -12,6 +12,8 @@ This directory contains automated tests for the Taskie framework components.
 make test                   # Run all tests via Make
 make test-validation        # Run validation tests
 make test-state             # Run state/auto-review tests
+./run-tests.sh logging      # Run logging tests
+make test-logging           # Run logging tests
 ```
 
 ## Test Organization
@@ -28,7 +30,8 @@ tests/
     ├── test-stop-hook-auto-review.sh  # Test suites 2 & 5: auto-review triggers
     ├── test-stop-hook-state-transitions.sh  # Test suite 3: state transitions
     ├── test-stop-hook-cli-invocation.sh     # Test suite 4: CLI invocation
-    └── test-stop-hook-edge-cases.sh   # Test suite 6: edge cases & integration
+    ├── test-stop-hook-edge-cases.sh   # Test suite 6: edge cases & integration
+    └── test-stop-hook-logging.sh      # Test suite 7: logging
 
 Repo root:
 ├── run-tests.sh                       # Test runner script
@@ -94,6 +97,20 @@ Test suite 6 tests edge cases and integration scenarios:
 - Model alternation integration
 - State field preservation
 - 12 tests total
+
+## Test Suite 7: Logging
+
+Test suite 7 tests the per-invocation logging system:
+- Log directory creation (`.taskie/logs/`)
+- Log file creation per invocation (`hook-{timestamp}.log`)
+- Invocation header present in log
+- State fields logged when state.json exists
+- Review decision logged when review triggers
+- CLI invocation logged
+- Validation result logged
+- No log files for non-Taskie projects
+- Multiple invocations create separate files
+- 9 tests total
 
 ## Shared Test Helpers
 

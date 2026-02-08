@@ -1,4 +1,4 @@
-.PHONY: test test-hooks test-state test-validation help clean
+.PHONY: test test-hooks test-state test-validation test-logging help clean
 
 # Default target
 help:
@@ -7,6 +7,7 @@ help:
 	@echo "  make test-hooks      - Run all hook tests"
 	@echo "  make test-state      - Run state/auto-review tests"
 	@echo "  make test-validation - Run validation tests only"
+	@echo "  make test-logging    - Run logging tests"
 	@echo "  make clean           - Clean up test artifacts"
 	@echo ""
 
@@ -21,6 +22,10 @@ test-hooks:
 # Run state/auto-review tests
 test-state:
 	@bash ./run-tests.sh state
+
+# Run logging tests
+test-logging:
+	@bash ./run-tests.sh logging
 
 # Run validation tests only
 test-validation:
