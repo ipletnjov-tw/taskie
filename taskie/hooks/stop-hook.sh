@@ -280,12 +280,14 @@ if [ -f "$STATE_FILE" ]; then
             log "Checking claude CLI available"
             if command -v claude &> /dev/null; then
                 log "claude CLI found"
-                log "Invoking: claude --print --model $REVIEW_MODEL --output-format json --dangerously-skip-permissions \"$PROMPT\""
+                JSON_SCHEMA='{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}'
+                CLI_CMD="claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\""
+                log "Invoking: $CLI_CMD"
                 set +e
                 CLI_OUTPUT=$(claude --print \
                     --model "$REVIEW_MODEL" \
                     --output-format json \
-                    --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}' \
+                    --json-schema "$JSON_SCHEMA" \
                     --dangerously-skip-permissions \
                     "$PROMPT" 2>"$LOG_FILE")
                 CLI_EXIT=$?
