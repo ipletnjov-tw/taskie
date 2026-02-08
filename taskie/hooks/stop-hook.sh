@@ -453,7 +453,7 @@ validate_plan_structure() {
         fi
     fi
 
-    # Rule 7: tasks.md must contain ONLY a markdown table
+    # Rule 8: tasks.md must contain ONLY a markdown table
     if [ -f "$plan_dir/tasks.md" ]; then
         local table_error=""
         while IFS= read -r line || [ -n "$line" ]; do

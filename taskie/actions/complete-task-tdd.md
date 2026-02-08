@@ -42,7 +42,7 @@ After completing implementation, you MUST update the workflow state file at `.ta
 1. Read the existing `state.json` file to preserve `max_reviews`
 2. Update the state with the following fields:
    - `phase`: `"complete-task-tdd"`
-   - `current_task`: `"{task-id}"` (the task ID you just implemented)
+   - `current_task`: `{task-id}` (the task ID you just implemented, as a number not a string)
    - `next_phase`: `"code-review"` (trigger automated code review)
    - `phase_iteration`: `0` (start fresh review cycle)
    - `review_model`: `"opus"` (reset to default for new cycle)
