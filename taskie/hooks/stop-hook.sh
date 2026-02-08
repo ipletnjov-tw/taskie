@@ -113,7 +113,7 @@ if [ -f "$STATE_FILE" ]; then
                 esac
 
                 # Write state atomically with phase set to review type and next_phase to advance target
-                TEMP_STATE=$(mktemp)
+                TEMP_STATE=$(mktemp "${STATE_FILE}.XXXXXX")
                 jq --arg phase "$REVIEW_TYPE" \
                    --arg next_phase "$ADVANCE_TARGET" \
                    --argjson phase_iteration 0 \
@@ -191,7 +191,7 @@ if [ -f "$STATE_FILE" ]; then
                     --output-format json \
                     --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}' \
                     --dangerously-skip-permissions \
-                    "$PROMPT" $FILES_TO_REVIEW 2>"$LOG_FILE")
+                    "$PROMPT" 2>"$LOG_FILE")
                 CLI_EXIT=$?
                 set -e
 
@@ -249,7 +249,7 @@ if [ -f "$STATE_FILE" ]; then
                         esac
 
                         # Write state atomically for auto-advance
-                        TEMP_STATE=$(mktemp)
+                        TEMP_STATE=$(mktemp "${STATE_FILE}.XXXXXX")
                         jq --arg phase "$REVIEW_TYPE" \
                            --arg next_phase "$ADVANCE_TARGET" \
                            --argjson phase_iteration "$PHASE_ITERATION" \
@@ -279,7 +279,7 @@ if [ -f "$STATE_FILE" ]; then
                     POST_REVIEW_PHASE="post-${REVIEW_TYPE}"
 
                     # Write state atomically
-                    TEMP_STATE=$(mktemp)
+                    TEMP_STATE=$(mktemp "${STATE_FILE}.XXXXXX")
                     jq --arg phase "$REVIEW_TYPE" \
                        --arg next_phase "$POST_REVIEW_PHASE" \
                        --argjson phase_iteration "$PHASE_ITERATION" \
@@ -351,9 +351,11 @@ validate_plan_structure() {
         if [[ ! "$filename" =~ ^(plan|design|tasks)\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+\.md$ ]] && \
            [[ ! "$filename" =~ ^(plan|design|tasks)-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^code-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^all-code-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^(plan|design|tasks)-post-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^code-post-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^all-code-post-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-post-review-[0-9]+\.md$ ]]; then
             add_error "Invalid filename: $filename"
@@ -420,18 +422,14 @@ validate_plan_structure() {
         if ! jq empty "$plan_dir/state.json" 2>/dev/null; then
             echo "Warning: state.json contains invalid JSON" >&2
         else
-            # Validate required fields (with forward-compatible default operators)
-            local phase=$(jq -r '(.phase // "")' "$plan_dir/state.json" 2>/dev/null)
-            local next_phase=$(jq -r '(.next_phase // "")' "$plan_dir/state.json" 2>/dev/null)
-            local review_model=$(jq -r '(.review_model // "")' "$plan_dir/state.json" 2>/dev/null)
-            local max_reviews=$(jq -r '(.max_reviews // 0)' "$plan_dir/state.json" 2>/dev/null)
-            local consecutive_clean=$(jq -r '(.consecutive_clean // 0)' "$plan_dir/state.json" 2>/dev/null)
-            local tdd=$(jq -r '(.tdd // false)' "$plan_dir/state.json" 2>/dev/null)
-
+            # Validate required fields exist (null is a valid value for next_phase)
             local missing_fields=""
-            [ -z "$phase" ] && missing_fields="${missing_fields}phase "
-            [ -z "$next_phase" ] && missing_fields="${missing_fields}next_phase "
-            [ -z "$review_model" ] && missing_fields="${missing_fields}review_model "
+            jq -r 'has("phase")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}phase "
+            jq -r 'has("next_phase")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}next_phase "
+            jq -r 'has("review_model")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}review_model "
+            jq -r 'has("max_reviews")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}max_reviews "
+            jq -r 'has("consecutive_clean")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}consecutive_clean "
+            jq -r 'has("tdd")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}tdd "
 
             if [ -n "$missing_fields" ]; then
                 echo "Warning: state.json missing required fields: ${missing_fields}" >&2
