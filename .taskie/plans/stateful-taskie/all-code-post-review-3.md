@@ -17,7 +17,7 @@ All-code-review-3 performed a comprehensive analysis of ALL code across all 6 ta
 
 **Issues found**:
 - 2 CRITICAL (both fixed)
-- 3 MEDIUM (all accepted as-is with justification)
+- 3 MEDIUM (1 fixed, 2 accepted as-is with justification)
 - 8 MINOR (4 fixed, 4 accepted as-is with justification)
 
 ---
@@ -76,21 +76,41 @@ All-code-review-3 performed a comprehensive analysis of ALL code across all 6 ta
 
 ---
 
-## Medium Issues Accepted As-Is
+## Medium Issues Fixed
 
 ### MEDIUM-1: Placeholder tests inflate test count (8 placeholders out of 70 tests)
 
-**Analysis**: 8 tests are placeholders that unconditionally pass without testing:
-- Suite 2: 4 placeholders (block message format tests)
-- Suite 3: 3 placeholders (state update tests noted as "covered in test X")
-- Suite 4: 1 placeholder (additional CLI tests 8-14)
+**Root cause**: 8 tests were placeholders that unconditionally passed without testing anything.
 
-**Decision**: Accept as-is
-- Placeholders are clearly labeled in code comments
-- They document planned test coverage for future expansion
-- 62 real tests provide comprehensive coverage of critical paths
-- Test count discrepancy (70 vs 80) already documented in all-code-post-review-1
-- No false positives - placeholders don't mask failures
+**Fix applied**: Implemented all 8 placeholder tests as real tests:
+
+**Auto-review suite** (`test-stop-hook-auto-review.sh`):
+- Test 20: plan-review block message contains required elements (decision, filename, action, escape hatch)
+- Test 21: tasks-review block message contains required elements
+- Test 22: all-code-review block message contains required elements
+- Test 23: Block decision has valid JSON format with decision and reason fields
+
+**State transitions suite** (`test-stop-hook-state-transitions.sh`):
+- Test 4: tasks-review state updates correctly after FAIL (verifies phase, next_phase, phase_iteration)
+- Test 5: code-review state updates correctly after FAIL
+- Test 6: all-code-review state updates correctly after FAIL
+
+**CLI invocation suite** (`test-stop-hook-cli-invocation.sh`):
+- Test 8: CLI invoked with correct model parameter (sonnet vs opus)
+
+**Files changed**:
+- `tests/hooks/test-stop-hook-auto-review.sh` - Replaced 4 placeholders with 4 real tests
+- `tests/hooks/test-stop-hook-state-transitions.sh` - Replaced 3 placeholders with 3 real tests
+- `tests/hooks/test-stop-hook-cli-invocation.sh` - Replaced 1 placeholder with 1 real test
+
+**Impact**:
+- Before: 62 real tests + 8 fake placeholders = 70 tests
+- After: 70 real tests + 0 placeholders = 70 tests
+- All 70 tests are now legitimate tests that verify actual behavior
+
+---
+
+## Medium Issues Accepted As-Is
 
 ---
 
@@ -278,6 +298,12 @@ TOTAL: 70/70 PASS (100%) ✅
 - MINOR-4: Updated tests/README.md
 - MINOR-5, MINOR-6: Fixed mktemp patterns in action files
 
+**27378ce** - "Implement all 8 placeholder tests - no more fake tests"
+- MEDIUM-1: Replaced all 8 placeholder tests with real implementations
+- Auto-review suite: 4 block message and format validation tests
+- State transitions suite: 3 state update verification tests
+- CLI invocation suite: 1 model parameter verification test
+
 ---
 
 ## Conclusion
@@ -285,10 +311,11 @@ TOTAL: 70/70 PASS (100%) ✅
 The stateful-taskie implementation is **production-ready** after addressing all critical issues:
 
 ✅ All critical issues fixed (CRITICAL-1 & CRITICAL-2)
-✅ Medium issues accepted with justification (placeholders, skipped test, hooks.json nesting)
+✅ Medium issue fixed (MEDIUM-1: implemented all 8 placeholder tests)
+✅ Medium issues accepted with justification (MEDIUM-2: skipped test, MEDIUM-3: hooks.json nesting)
 ✅ Minor issues fixed (4 fixes: TODO, test target, README, mktemp patterns)
 ✅ Minor issues accepted with justification (4 accepted: run args, timeout msg, Codex scope)
-✅ All 70 tests passing (100% pass rate)
+✅ All 70 tests passing (100% pass rate, ALL REAL tests, no placeholders)
 
 **Overall Assessment**: Implementation is solid, internally consistent, and thoroughly tested. Spec now matches implementation. All acceptance criteria met.
 
