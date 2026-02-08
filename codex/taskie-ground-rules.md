@@ -21,6 +21,8 @@ You will follow the same process for each implementation plan:
   * The `tasks.md` and `task-{task-id}.md` files are updated
 * You will be prompted to review the task implementation
   * A number of `task-{task-id}-review-{review-id}.md` files are created
+* You may be prompted to review the complete implementation across all tasks
+  * A number of `all-code-review-{review-id}.md` files are created
 
 Each step of the plan will consist of multiple iterations, depending on the results of the critical reviews and the human operator's assessment.
 
@@ -31,6 +33,7 @@ Each plan will have the same basic directory structure:
 .taskie/
 ├── plans/
 │   ├── {current-plan-id}/
+│   │   ├── state.json                   # Workflow state (optional, used by automated review cycles)
 │   │   ├── plan.md                      # Implementation Plan Document
 │   │   ├── plan-review-1.md             # Implementation Plan Review 1
 │   │   ├── plan-post-review-1.md        # Post-Review Fixes Summary 1
@@ -49,6 +52,12 @@ Each plan will have the same basic directory structure:
 │   │   ├── . . .
 │   │   ├── tasks-review-n.md            # Task List and Tasks Review n
 │   │   ├── tasks-post-review-n.md       # Post-Review Fixes Summary n
+│   │   ├── code-review-1.md             # Code Review 1 (per-task)
+│   │   ├── code-post-review-1.md        # Code Post-Review Fixes Summary 1
+│   │   ├── . . .
+│   │   ├── all-code-review-1.md         # All-Code Review 1 (all tasks)
+│   │   ├── all-code-post-review-1.md    # All-Code Post-Review Fixes Summary 1
+│   │   ├── . . .
 │   │   ├── task-1.md                    # Task 1 and Subtasks
 │   │   ├── task-1-review-1.md           # Task 1 Review 1
 │   │   ├── task-1-post-review-1.md      # Post-Review Fixes Summary 1

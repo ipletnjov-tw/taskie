@@ -27,4 +27,13 @@ Each subtask MUST have the following fields:
 - **Acceptance criteria**: (Specific, testable conditions that define "done")
 ```
 
-Remember, you MUST follow the `.taskie/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+After creating the new task and task file, update the workflow state file at `.taskie/plans/{current-plan-dir}/state.json`:
+
+1. Read the existing `state.json` file
+2. Check the `current_task` field:
+   - **If `current_task` is null**: Set `current_task` to the new task ID (no task was in progress, this is the new current task)
+   - **If `current_task` is non-null**: Preserve the existing value (a task is already in progress, don't change it)
+3. Preserve all other fields unchanged: `phase`, `next_phase`, `phase_iteration`, `max_reviews`, `review_model`, `consecutive_clean`, `tdd`
+4. Write the updated state atomically using a temp file: write to a temporary file first, then `mv` to `state.json`
+
+Remember, you MUST follow the `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.

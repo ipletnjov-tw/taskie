@@ -1,25 +1,30 @@
-.PHONY: test test-hooks test-verbose help clean
+.PHONY: test test-hooks test-state test-validation help clean
 
 # Default target
 help:
 	@echo "Taskie Test Targets:"
-	@echo "  make test         - Run all tests"
-	@echo "  make test-hooks   - Run hook tests only"
-	@echo "  make test-verbose - Run tests with verbose output"
-	@echo "  make clean        - Clean up test artifacts"
+	@echo "  make test            - Run all tests"
+	@echo "  make test-hooks      - Run all hook tests"
+	@echo "  make test-state      - Run state/auto-review tests"
+	@echo "  make test-validation - Run validation tests only"
+	@echo "  make clean           - Clean up test artifacts"
 	@echo ""
 
 # Run all tests
 test:
-	@bash ./run-tests.sh
+	@bash ./run-tests.sh all
 
-# Run hook tests only
+# Run all hook tests
 test-hooks:
 	@bash ./run-tests.sh hooks
 
-# Run tests with verbose output
-test-verbose:
-	@bash ./run-tests.sh --verbose
+# Run state/auto-review tests
+test-state:
+	@bash ./run-tests.sh state
+
+# Run validation tests only
+test-validation:
+	@bash ./run-tests.sh validation
 
 # Clean up test artifacts
 clean:
