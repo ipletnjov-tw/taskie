@@ -50,6 +50,15 @@ case "$TEST_SUITE" in
             fi
         done
         ;;
+    logging)
+        echo "Running logging tests..."
+        if [ -f "$SCRIPT_DIR/tests/hooks/test-stop-hook-logging.sh" ]; then
+            bash "$SCRIPT_DIR/tests/hooks/test-stop-hook-logging.sh"
+        else
+            echo "Error: logging test file not found"
+            exit 1
+        fi
+        ;;
     state)
         echo "Running state/auto-review tests..."
         for test_file in test-stop-hook-auto-review.sh test-stop-hook-state-transitions.sh test-stop-hook-cli-invocation.sh test-stop-hook-edge-cases.sh; do
@@ -74,7 +83,7 @@ case "$TEST_SUITE" in
         echo "Unknown test suite: $TEST_SUITE"
         echo ""
         echo "Usage:"
-        echo "  ./run-tests.sh [all|hooks|state|validation|path/to/test.sh]"
+        echo "  ./run-tests.sh [all|hooks|state|validation|logging|path/to/test.sh]"
         echo ""
         echo "Examples:"
         echo "  ./run-tests.sh                    # Run all tests"
