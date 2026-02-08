@@ -24,18 +24,30 @@ Update `ground-rules.md` with state.json documentation, update Codex CLI prompts
 
 ### Subtask 6.2: Update Codex CLI prompts
 - **Short description**: Update `taskie-new-plan.md` to initialize `state.json` after plan creation (same as Claude Code variant). Update `taskie-continue-plan.md` to read `state.json` for continuation routing (primary benefit for Codex users). Other Codex prompts are NOT updated — without hooks to enforce state updates, making every prompt manually update `state.json` is fragile.
-- **Status**: pending
+- **Status**: completed
 - **Sample git commit message**: Update Codex CLI prompts for state.json support
-- **Git commit hash**:
+- **Git commit hash**: (to be added after commit)
 - **Priority**: medium
 - **Complexity**: 3
 - **Test approach**: Manual: verify both Codex prompt files have state.json instructions. Run `./install-codex.sh` and verify prompts are copied correctly.
 - **Must-run commands**: `./install-codex.sh` (if Codex is installed)
 - **Acceptance criteria**:
-  - `taskie-new-plan.md` initializes `state.json` with all 8 fields
-  - `taskie-continue-plan.md` reads `state.json` for routing (same logic as Claude Code variant)
-  - Other Codex prompts remain unchanged
-  - Both files reference `~/.codex/prompts/taskie-ground-rules.md` for ground rules
+  - `taskie-new-plan.md` initializes `state.json` with all 8 fields ✅
+  - `taskie-continue-plan.md` reads `state.json` for routing (same logic as Claude Code variant) ✅
+  - Other Codex prompts remain unchanged ✅
+  - Both files reference `~/.codex/prompts/taskie-ground-rules.md` for ground rules ✅
+
+**Implementation summary**:
+- Updated `codex/taskie-new-plan.md` to initialize state.json with all 8 fields (max_reviews: 8, current_task: null, phase: "new-plan", next_phase: "plan-review", phase_iteration: 0, review_model: "opus", consecutive_clean: 0, tdd: false)
+- Added directory setup instruction (mkdir -p before writing files)
+- Added atomic write note and escape hatch explanation (set next_phase: null to disable automation)
+- Updated `codex/taskie-continue-plan.md` to implement state-based routing:
+  - Step 1: Check for state.json existence (state-first approach)
+  - Step 2: State-based routing with next_phase and phase detection
+  - Step 3: Git-based fallback for backwards compatibility
+  - Crash recovery heuristics for all review phases (plan, tasks, code, all-code)
+  - Completion percentage routing for code-review (≥90%, 50-90%, ≤50%)
+- Both files already reference ~/.codex/prompts/taskie-ground-rules.md for ground rules (no changes needed)
 
 ### Subtask 6.3: Write test suite 6 (edge cases & integration)
 - **Short description**: Implement all 12 tests from suite 6: multiple plan directories, unknown fields, null phase_iteration, unexpected review_model, concurrent plan creation, auto-review precedence over validation, empty plan directory, max_reviews=0, backwards compatibility (no state.json), full model alternation across 4 iterations, two consecutive clean integration, atomic write cleanup.
