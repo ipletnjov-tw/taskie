@@ -1,7 +1,7 @@
 {
   "max_reviews": 8,
   "current_task": null,
-  "phase": "all-code-review",
+  "phase": "post-all-code-review",
   "phase_iteration": null,
   "next_phase": null,
   "review_model": "opus",
