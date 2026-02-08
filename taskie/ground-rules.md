@@ -38,6 +38,7 @@ Each plan will have the same basic directory structure:
 .taskie/
 ├── plans/
 │   ├── {current-plan-id}/
+│   │   ├── state.json                   # Workflow State File (see State Management below)
 │   │   ├── plan.md                      # Implementation Plan Document
 │   │   ├── plan-review-1.md             # Implementation Plan Review 1
 │   │   ├── plan-post-review-1.md        # Post-Review Fixes Summary 1
@@ -100,6 +101,37 @@ After addressing issues from a task review, a `task-{task-id}-post-review-{revie
 The subtasks MUST be updated after each iteration. The table in the `tasks.md` MUST be updated after each iteration and each review.
 
 Once you a subtask is finished, a git commit and git push MUST be performed. A short summary MUST be written down into the respective task file.
+
+# State Management
+
+Each plan directory contains a `state.json` file that tracks the current workflow state. **This file is the authoritative source for determining "where we are" in the implementation process** - it takes precedence over git history or file inspection.
+
+## State File Schema
+
+The `state.json` file contains 8 fields:
+
+```json
+{
+  "max_reviews": 8,           // Maximum review iterations before manual intervention (0 = skip reviews)
+  "current_task": null,        // Task ID currently being worked on (null if no task active)
+  "phase": "new-plan",         // Current workflow phase (e.g., "new-plan", "implementation", "code-review")
+  "next_phase": "plan-review", // Next phase to execute (null for standalone mode, non-null for automated workflow)
+  "phase_iteration": 0,        // Current iteration within a review cycle (null for non-review phases)
+  "review_model": "opus",      // Model to use for next review ("opus" or "sonnet", alternates each iteration)
+  "consecutive_clean": 0,      // Number of consecutive PASS reviews (resets to 0 on FAIL)
+  "tdd": false                 // Whether Test-Driven Development is enabled for this plan
+}
+```
+
+## State Update Requirements
+
+**CRITICAL**: The `state.json` file MUST be updated after EVERY phase transition. When an action completes (new-plan, create-tasks, next-task, code-review, etc.), the action is responsible for updating `state.json` to reflect the new workflow state before pushing to remote.
+
+**Primary workflow modes**:
+- **Automated mode**: `next_phase` is non-null → the hook will automatically trigger the next phase when you stop
+- **Standalone mode**: `next_phase` is null → no automation, manual invocation required
+
+**State-first approach**: When continuing work on a plan, always read `state.json` first to determine the current state. Only fall back to git history analysis if `state.json` doesn't exist (backwards compatibility with pre-stateful plans).
 
 # Cross-cutting Rules
 
