@@ -98,10 +98,84 @@ else
 fi
 cleanup
 
-# Test 4-8: All review types update state correctly (already covered above, adding placeholders)
-pass "Placeholder: tasks-review state updates (covered in test 3)"
-pass "Placeholder: code-review state updates (covered in test 2)"
-pass "Placeholder: all-code-review state updates"
+# Test 4: tasks-review state updates after FAIL
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1 | pending |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "create-tasks", "next_phase": "tasks-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="tasks-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+PHASE=$(jq -r '.phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+NEXT_PHASE=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+ITERATION=$(jq -r '.phase_iteration' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+
+if [ "$PHASE" = "tasks-review" ] && [ "$NEXT_PHASE" = "post-tasks-review" ] && [ "$ITERATION" = "1" ]; then
+    pass "tasks-review state updates correctly after FAIL"
+else
+    fail "tasks-review state incorrect: phase=$PHASE, next_phase=$NEXT_PHASE, iteration=$ITERATION"
+fi
+cleanup
+
+# Test 5: code-review state updates after FAIL
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task", "next_phase": "code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+PHASE=$(jq -r '.phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+NEXT_PHASE=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+ITERATION=$(jq -r '.phase_iteration' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+
+if [ "$PHASE" = "code-review" ] && [ "$NEXT_PHASE" = "post-code-review" ] && [ "$ITERATION" = "1" ]; then
+    pass "code-review state updates correctly after FAIL"
+else
+    fail "code-review state incorrect: phase=$PHASE, next_phase=$NEXT_PHASE, iteration=$ITERATION"
+fi
+cleanup
+
+# Test 6: all-code-review state updates after FAIL
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1 | done |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task", "next_phase": "all-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="all-code-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+PHASE=$(jq -r '.phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+NEXT_PHASE=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+ITERATION=$(jq -r '.phase_iteration' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+
+if [ "$PHASE" = "all-code-review" ] && [ "$NEXT_PHASE" = "post-all-code-review" ] && [ "$ITERATION" = "1" ]; then
+    pass "all-code-review state updates correctly after FAIL"
+else
+    fail "all-code-review state incorrect: phase=$PHASE, next_phase=$NEXT_PHASE, iteration=$ITERATION"
+fi
+cleanup
 
 # Test 9: consecutive_clean increments on PASS
 TEST_DIR=$(mktemp -d)

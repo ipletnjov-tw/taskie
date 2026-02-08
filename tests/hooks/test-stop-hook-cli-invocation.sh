@@ -183,7 +183,24 @@ else
 fi
 cleanup
 
-# Test 8-14: Additional prompt content and model verification tests
-pass "Placeholder for additional CLI tests (8-14)"
+# Test 8: CLI invoked with correct model for code-review
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task", "next_phase": "code-review", "review_model": "sonnet", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_VERDICT="PASS"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+if [ -f "$MOCK_LOG" ] && grep -q "sonnet" "$MOCK_LOG"; then
+    pass "CLI invoked with correct model (sonnet)"
+else
+    fail "CLI not invoked with correct model"
+fi
+cleanup
 
 print_results

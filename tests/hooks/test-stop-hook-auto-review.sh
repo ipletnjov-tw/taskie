@@ -287,10 +287,85 @@ else
 fi
 cleanup
 
-# Additional block message tests (placeholders)
-pass "Placeholder: plan-review block message"
-pass "Placeholder: tasks-review block message"
-pass "Placeholder: all-code-review block message"
-pass "Placeholder: Block decision format verification"
+# Test 20: plan-review block message
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "new-plan", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="plan-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+if echo "$HOOK_STDOUT" | grep -q "decision.*block" && \
+   echo "$HOOK_STDOUT" | grep -q "plan-review-1.md" && \
+   echo "$HOOK_STDOUT" | grep -q "post-plan-review" && \
+   echo "$HOOK_STDOUT" | grep -qi "escape"; then
+    pass "plan-review block message contains required elements"
+else
+    fail "plan-review block message missing required elements (got: $HOOK_STDOUT)"
+fi
+cleanup
+
+# Test 21: tasks-review block message
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "create-tasks", "next_phase": "tasks-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="tasks-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+if echo "$HOOK_STDOUT" | grep -q "decision.*block" && \
+   echo "$HOOK_STDOUT" | grep -q "tasks-review-1.md" && \
+   echo "$HOOK_STDOUT" | grep -q "post-tasks-review" && \
+   echo "$HOOK_STDOUT" | grep -qi "escape"; then
+    pass "tasks-review block message contains required elements"
+else
+    fail "tasks-review block message missing required elements (got: $HOOK_STDOUT)"
+fi
+cleanup
+
+# Test 22: all-code-review block message
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task", "next_phase": "all-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="all-code-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+if echo "$HOOK_STDOUT" | grep -q "decision.*block" && \
+   echo "$HOOK_STDOUT" | grep -q "all-code-review-1.md" && \
+   echo "$HOOK_STDOUT" | grep -q "post-all-code-review" && \
+   echo "$HOOK_STDOUT" | grep -qi "escape"; then
+    pass "all-code-review block message contains required elements"
+else
+    fail "all-code-review block message missing required elements (got: $HOOK_STDOUT)"
+fi
+cleanup
+
+# Test 23: Block decision format verification
+TEST_DIR=$(mktemp -d)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "new-plan", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="plan-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+if echo "$HOOK_STDOUT" | jq -e '.decision == "block" and .reason != null' >/dev/null 2>&1; then
+    pass "Block decision has valid JSON format with decision and reason fields"
+else
+    fail "Block decision JSON format invalid (got: $HOOK_STDOUT)"
+fi
+cleanup
 
 print_results
