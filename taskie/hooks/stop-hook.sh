@@ -478,12 +478,9 @@ if [ -f "$STATE_FILE" ]; then
 
                     log "DECISION: block"
                     log "reason=$BLOCK_REASON"
-                    jq -n --arg reason "$BLOCK_REASON" '{
-                        "decision": "block",
-                        "reason": $reason
-                    }'
-                    log "Final exit: code=0 decision=block"
-                    exit 0
+                    log "Final exit: code=2 (continue conversation)"
+                    echo "Stop hook error: $BLOCK_REASON" >&2
+                    exit 2
                 else
                     # CLI failed or review file missing
                     log "CLI failed or review not written: exit=$CLI_EXIT, review_exists=$([ -f "$REVIEW_FILE" ] && echo true || echo false)"
@@ -666,10 +663,8 @@ if [ $PLAN_RESULT -eq 0 ]; then
     echo "{\"systemMessage\": \"Plan '$PLAN_NAME' structure validated successfully\", \"suppressOutput\": true}"
 else
     log "Validation FAIL: $PLAN_ERROR"
-    log "Final exit: code=0 decision=block"
-    jq -n --arg reason "Plan '$PLAN_NAME': $PLAN_ERROR" '{
-        "decision": "block",
-        "reason": $reason
-    }'
+    log "Final exit: code=2 (continue conversation)"
+    echo "Stop hook error: Plan '$PLAN_NAME': $PLAN_ERROR" >&2
+    exit 2
 fi
 exit 0
