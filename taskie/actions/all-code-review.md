@@ -8,9 +8,12 @@ Double check ALL the must-run commands from all tasks by running them and analyz
 
 Document the results of your review in `.taskie/plans/{current-plan-dir}/all-code-review-{iteration}.md`.
 
-**Review file naming**:
-- For AUTOMATED reviews (invoked by hook): use the `phase_iteration` value from state.json as the iteration number (e.g., `all-code-review-1.md`, `all-code-review-2.md`)
-- For STANDALONE reviews (manual invocation): use max(existing iteration numbers) + 1 from existing review files in the directory
+**Review file naming (CRITICAL - ALWAYS create a NEW file, NEVER modify existing):**
+- Find all existing `all-code-review-*.md` files in the plan directory
+- Use `max(existing iteration numbers) + 1` as the iteration number
+- Example: if `all-code-review-1.md` and `all-code-review-2.md` exist, create `all-code-review-3.md`
+- If no review files exist, start with `all-code-review-1.md`
+- **NEVER overwrite an existing review file**
 
 If you don't know what the `{current-plan-dir}` is, use git history to find out which plan was modified most recently.
 

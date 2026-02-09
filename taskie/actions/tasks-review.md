@@ -8,9 +8,12 @@ If you don't know what the `{current-plan-dir}` is, use git history to find out 
 
 Document the results of your review in `.taskie/plans/{current-plan-dir}/tasks-review-{iteration}.md`.
 
-**Review file naming**:
-- For AUTOMATED reviews (invoked by hook): use the `phase_iteration` value from state.json as the iteration number (e.g., `tasks-review-1.md`, `tasks-review-2.md`)
-- For STANDALONE reviews (manual invocation): use max(existing iteration numbers) + 1 from existing review files in the directory
+**Review file naming (CRITICAL - ALWAYS create a NEW file, NEVER modify existing):**
+- Find all existing `tasks-review-*.md` files in the plan directory
+- Use `max(existing iteration numbers) + 1` as the iteration number
+- Example: if `tasks-review-1.md` and `tasks-review-2.md` exist, create `tasks-review-3.md`
+- If no review files exist, start with `tasks-review-1.md`
+- **NEVER overwrite an existing review file**
 
 After completing the review, check the workflow context to determine if this is a standalone or automated review:
 
