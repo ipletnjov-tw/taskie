@@ -20,7 +20,10 @@ validate_plan_structure() {
     local plan_dir="$1"
     local errors=""
 
+    log ">>> VALIDATION START: $plan_dir"
+
     add_error() {
+        log "    [ERROR ADDED] $1"
         if [ -z "$errors" ]; then
             errors="$1"
         else
@@ -29,14 +32,21 @@ validate_plan_structure() {
     }
 
     # Rule 1: plan.md must exist
+    log "  [Rule 1] Checking plan.md exists"
     if [ ! -f "$plan_dir/plan.md" ]; then
         add_error "Missing required file: plan.md"
+    else
+        log "    ✓ plan.md exists"
     fi
 
     # Rule 2: Validate file naming conventions
+    log "  [Rule 2] Validating file naming conventions"
+    local md_count=0
     for file in "$plan_dir"/*.md; do
         [ -e "$file" ] || continue
         local filename=$(basename "$file")
+        md_count=$((md_count + 1))
+        log "    Checking: $filename"
 
         # Valid patterns:
         # - plan.md, design.md, tasks.md
@@ -61,41 +71,63 @@ validate_plan_structure() {
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-post-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-code-post-review-[0-9]+\.md$ ]]; then
             add_error "Invalid filename: $filename"
+        else
+            log "      ✓ Valid pattern"
         fi
     done
+    log "    Total .md files checked: $md_count"
 
     # Rule 3: Check for nested directories (files should be directly in plan dir)
+    log "  [Rule 3] Checking for nested directories"
     if find "$plan_dir" -mindepth 2 -type f -name "*.md" 2>/dev/null | grep -q .; then
         add_error "Files found in nested directories"
+    else
+        log "    ✓ No nested directories"
     fi
 
     # Rule 4: Review files need their base files
+    log "  [Rule 4] Checking review files have base files"
+    local review_count=0
     for review_file in "$plan_dir"/*-review-[0-9]*.md; do
         [ -e "$review_file" ] || continue
+        review_count=$((review_count + 1))
+        log "    Checking: $(basename "$review_file")"
 
         local base_name=$(basename "$review_file" | sed 's/-review-[0-9]*.md$//')
 
         if [ "$base_name" = "plan" ] || [ "$base_name" = "design" ] || [ "$base_name" = "tasks" ]; then
             if [ ! -f "$plan_dir/${base_name}.md" ]; then
                 add_error "$(basename "$review_file") requires ${base_name}.md"
+            else
+                log "      ✓ ${base_name}.md exists"
             fi
         fi
     done
+    log "    Review files checked: $review_count"
 
     # Rule 5: Post-review files need their review files
+    log "  [Rule 5] Checking post-review files have review files"
+    local post_review_count=0
     for post_review in "$plan_dir"/*-post-review-[0-9]*.md; do
         [ -e "$post_review" ] || continue
+        post_review_count=$((post_review_count + 1))
+        log "    Checking: $(basename "$post_review")"
 
         local review_file=$(basename "$post_review" | sed 's/-post-review-/-review-/')
 
         if [ ! -f "$plan_dir/$review_file" ]; then
             add_error "$(basename "$post_review") requires $review_file"
+        else
+            log "      ✓ $review_file exists"
         fi
     done
+    log "    Post-review files checked: $post_review_count"
 
     # Rule 5b: Review files (except most recent) need post-review files
     # Group review files by type and check that all but the latest have post-review files
+    log "  [Rule 5b] Checking review files (except latest) have post-review files"
     for review_pattern in "plan-review-" "design-review-" "tasks-review-" "all-code-review-" "task-*-review-" "task-*-code-review-"; do
+        log "    Checking pattern: $review_pattern*"
         # Find all review files matching this pattern
         local review_files=()
         for file in "$plan_dir"/${review_pattern}[0-9]*.md; do
@@ -140,24 +172,40 @@ validate_plan_structure() {
     done
 
     # Rule 6: If task files exist, tasks.md should exist
+    log "  [Rule 6] Checking if tasks.md exists when task files exist"
     if ls "$plan_dir"/task-*.md 2>/dev/null | grep -v "review" | grep -q .; then
+        log "    Task files found"
         if [ ! -f "$plan_dir/tasks.md" ]; then
             add_error "Task files exist but tasks.md is missing"
+        else
+            log "      ✓ tasks.md exists"
         fi
+    else
+        log "    No task files found"
     fi
 
     # Rule 7: task-*-code-review-*.md files require corresponding task file
+    log "  [Rule 7] Checking code review files have corresponding task files"
+    local code_review_count=0
     for code_review_file in "$plan_dir"/task-*-code-review-[0-9]*.md; do
         [ -e "$code_review_file" ] || continue
+        code_review_count=$((code_review_count + 1))
+        log "    Checking: $(basename "$code_review_file")"
         # Extract task ID from filename: task-{id}-code-review-{n}.md
         local task_id=$(basename "$code_review_file" | sed 's/^task-\([^-]*\)-code-review-.*$/\1/')
+        log "      Task ID: $task_id"
         if [ ! -f "$plan_dir/task-${task_id}.md" ]; then
             add_error "$(basename "$code_review_file") requires task-${task_id}.md"
+        else
+            log "      ✓ task-${task_id}.md exists"
         fi
     done
+    log "    Code review files checked: $code_review_count"
 
     # Rule 8: tasks.md must contain ONLY a markdown table
+    log "  [Rule 8] Validating tasks.md structure"
     if [ -f "$plan_dir/tasks.md" ]; then
+        log "    tasks.md exists, checking content"
         local table_error=""
         while IFS= read -r line || [ -n "$line" ]; do
             [ -z "$line" ] && continue
@@ -174,18 +222,27 @@ validate_plan_structure() {
         else
             # Check for at least one data row (header + separator + data = 3 rows minimum)
             local row_count=$(grep "^|" "$plan_dir/tasks.md" | wc -l)
+            log "      Table row count: $row_count"
             if [ "$row_count" -lt 3 ]; then
                 add_error "tasks.md has no task rows (header-only table)"
+            else
+                log "      ✓ tasks.md has valid table structure"
             fi
         fi
+    else
+        log "    tasks.md does not exist (skipping)"
     fi
 
     # Rule 8: state.json validation (if exists)
+    log "  [Rule 8] Validating state.json"
     if [ -f "$plan_dir/state.json" ]; then
+        log "    state.json exists, checking JSON syntax"
         # Validate JSON syntax
         if ! jq empty "$plan_dir/state.json" 2>/dev/null; then
+            log "    WARNING: state.json contains invalid JSON"
             echo "Warning: state.json contains invalid JSON" >&2
         else
+            log "      ✓ Valid JSON syntax"
             # Validate required fields exist (null is a valid value for next_phase, current_task, phase_iteration)
             local missing_fields=""
             jq -r 'has("phase")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}phase "
@@ -198,27 +255,51 @@ validate_plan_structure() {
             jq -r 'has("phase_iteration")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}phase_iteration "
 
             if [ -n "$missing_fields" ]; then
+                log "    WARNING: Missing required fields: ${missing_fields}"
                 echo "Warning: state.json missing required fields: ${missing_fields}" >&2
+            else
+                log "      ✓ All required fields present"
             fi
         fi
+    else
+        log "    state.json does not exist (skipping)"
     fi
 
     # Rule 9: Check for invalid files (only .md and state.json allowed)
+    log "  [Rule 9] Checking for invalid/garbage files"
+    local file_count=0
+    local valid_count=0
+
+    # Enable dotglob to match hidden files
+    shopt -s dotglob nullglob
     for file in "$plan_dir"/*; do
         [ -e "$file" ] || continue
         [ -d "$file" ] && continue  # Skip directories
         local filename=$(basename "$file")
 
+        # Skip . and .. entries
+        [ "$filename" = "." ] || [ "$filename" = ".." ] && continue
+
+        file_count=$((file_count + 1))
+        log "    Checking: $filename"
+
         # Allowed files: *.md, state.json
         if [[ ! "$filename" =~ \.md$ ]] && [ "$filename" != "state.json" ]; then
             add_error "Invalid file in plan directory: $filename (only .md files and state.json allowed)"
+        else
+            valid_count=$((valid_count + 1))
+            log "      ✓ Valid file type"
         fi
     done
+    shopt -u dotglob nullglob
+    log "    Files checked: $file_count (valid: $valid_count, invalid: $((file_count - valid_count)))"
 
     if [ -n "$errors" ]; then
+        log "<<< VALIDATION FAILED with errors"
         echo "$errors"
         return 1
     fi
+    log "<<< VALIDATION PASSED (no errors)"
     return 0
 }
 
@@ -282,6 +363,7 @@ log ".taskie/plans found"
 mkdir -p .taskie/logs
 HOOK_LOG=".taskie/logs/hook-$(date '+%Y-%m-%dT%H-%M-%S').log"
 log "=== Hook invocation ==="
+log "TASKIE PLUGIN VERSION: 4.0.1"
 log "EVENT: $EVENT"
 log "CWD: $CWD"
 log "stop_hook_active: $STOP_HOOK_ACTIVE"

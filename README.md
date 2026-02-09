@@ -24,7 +24,7 @@ Heavily inspired by [Taskmaster](https://github.com/eyaltoledano/claude-task-mas
 /plugin install taskie@taskie
 ```
 
-Latest version: **v4.0.0**
+Latest version: **v4.0.1**
 
 ### For OpenAI Codex CLI
 
