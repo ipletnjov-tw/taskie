@@ -285,9 +285,9 @@ if [ -f "$STATE_FILE" ]; then
 
                 # Validate review model
                 log "Validating review model: $REVIEW_MODEL"
-                if [[ ! "$REVIEW_MODEL" =~ ^(opus|sonnet|haiku)$ ]]; then
+                if [[ ! "$REVIEW_MODEL" =~ ^(opus|sonnet)$ ]]; then
                     log "ERROR: Invalid review model: $REVIEW_MODEL"
-                    echo '{"systemMessage": "Invalid review model configured. Please update state.json with a valid model (opus, sonnet, or haiku).", "suppressOutput": true}' >&2
+                    echo '{"systemMessage": "Invalid review model configured. Please update state.json with a valid model (opus or sonnet).", "suppressOutput": true}' >&2
                     exit 2
                 fi
                 log "Review model valid: $REVIEW_MODEL"
