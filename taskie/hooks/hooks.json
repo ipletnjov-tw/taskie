@@ -1,11 +1,11 @@
 {
-  "description": "Validates directory structure and triggers automated reviews",
+  "description": "Validates directory structure and triggers automated reviews (30-min timeout for complex operations)",
   "hooks": {
     "Stop": [{
       "hooks": [{
         "type": "command",
         "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh",
-        "timeout": 600,
+        "timeout": 1800,
         "statusMessage": "Validating plan structure and checking for reviews..."
       }]
     }]
