@@ -313,7 +313,7 @@ if [ -f "$STATE_FILE" ]; then
                     --output-format json \
                     --json-schema "$JSON_SCHEMA" \
                     --dangerously-skip-permissions \
-                    "$PROMPT" 2>&1 | tee -a "$CLI_LOG_FILE")
+                    "$PROMPT" < /dev/null 2>&1 | tee -a "$CLI_LOG_FILE")
                 CLI_EXIT=$?
                 set -e
 
