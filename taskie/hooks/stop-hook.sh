@@ -135,7 +135,7 @@ if [ -f "$STATE_FILE" ]; then
         VALID_PHASES="^(plan-review|tasks-review|code-review|all-code-review|post-plan-review|post-tasks-review|post-code-review|post-all-code-review|create-tasks|complete-task|complete-task-tdd|continue-plan|complete|new-plan|add-task)$"
         if [ -n "$NEXT_PHASE" ] && ! [[ "$NEXT_PHASE" =~ $VALID_PHASES ]]; then
             log "ERROR: Invalid next_phase value: $NEXT_PHASE"
-            echo "Stop hook error: Invalid next_phase='$NEXT_PHASE' in state.json. Must be one of: plan-review, tasks-review, code-review, all-code-review, post-*, create-tasks, complete-task, complete-task-tdd, continue-plan, complete, new-plan, add-task" >&2
+            echo "Stop hook error: Invalid next_phase='$NEXT_PHASE' in state.json. DO NOT modify state.json yourself - the hook manages workflow state. Ask the user to fix this manually or delete state.json to reset." >&2
             exit 2
         fi
         log "next_phase validation passed"
