@@ -233,8 +233,9 @@ if [ -f "$STATE_FILE" ]; then
 
             # Step 5d: Prepare for CLI invocation
             REVIEW_FILE="$RECENT_PLAN/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-            LOG_FILE="$RECENT_PLAN/.review-${PHASE_ITERATION}.log"
-            log "REVIEW_FILE=$REVIEW_FILE, LOG_FILE=$LOG_FILE"
+            # Create CLI log file in logs directory for real-time streaming
+            CLI_LOG_FILE=".taskie/logs/cli-$(date '+%Y-%m-%dT%H-%M-%S')-${REVIEW_TYPE}-${PHASE_ITERATION}.log"
+            log "REVIEW_FILE=$REVIEW_FILE, CLI_LOG_FILE=$CLI_LOG_FILE"
 
             # Build task file list for tasks-review and all-code-review
             TASK_FILE_LIST=""
@@ -302,15 +303,17 @@ if [ -f "$STATE_FILE" ]; then
                 fi
                 log "JSON schema valid"
 
-                CLI_CMD="TASKIE_HOOK_SKIP=true timeout 120 claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\""
+                CLI_CMD="TASKIE_HOOK_SKIP=true timeout 120 claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\" 2>&1 | tee -a \"$CLI_LOG_FILE\""
                 log "Invoking: $CLI_CMD"
+                log "CLI output streaming in real-time to: $CLI_LOG_FILE"
                 set +e
+                # Use tee to stream output to log file in real-time while capturing to variable
                 CLI_OUTPUT=$(TASKIE_HOOK_SKIP=true timeout 120 claude --print \
                     --model "$REVIEW_MODEL" \
                     --output-format json \
                     --json-schema "$JSON_SCHEMA" \
                     --dangerously-skip-permissions \
-                    "$PROMPT" 2>"$LOG_FILE")
+                    "$PROMPT" 2>&1 | tee -a "$CLI_LOG_FILE")
                 CLI_EXIT=$?
                 set -e
 
@@ -329,8 +332,7 @@ if [ -f "$STATE_FILE" ]; then
                 log "Checking review file written"
                 if [ $CLI_EXIT -eq 0 ] && [ -f "$REVIEW_FILE" ]; then
                     log "YES: $REVIEW_FILE exists"
-                    # Success - clean up log file
-                    rm -f "$LOG_FILE"
+                    log "CLI log preserved at: $CLI_LOG_FILE"
 
                     # Step 5f: Extract verdict from CLI output
                     log "Extracting verdict from CLI output"
