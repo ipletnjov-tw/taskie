@@ -4,6 +4,8 @@ Perform a thorough review of the current task implementation and latest changes.
 
 Double check ALL the must-run commands by running them and analyzing their results.
 
+**Your review must be a clean slate. Do not look at any prior review files.**
+
 Document the results of your review in `.taskie/plans/{current-plan-dir}/code-review-{iteration}.md`.
 
 **Review file naming**:

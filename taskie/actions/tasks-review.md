@@ -2,6 +2,8 @@
 
 Perform a thorough review of the proposed task list defined in `.taskie/plans/{current-plan-dir}/tasks.md` and the corresponding task files `.taskie/plans/{current-plan-dir}/task-{task-id}.md`. Be very critical, look for mistakes, inconsistencies, misunderstandings, misconceptions, scope creep, over-engineering and other cruft.
 
+**Your review must be a clean slate. Do not look at any prior review files.**
+
 If you don't know what the `{current-plan-dir}` is, use git history to find out which plan was modified most recently.
 
 Document the results of your review in `.taskie/plans/{current-plan-dir}/tasks-review-{iteration}.md`.

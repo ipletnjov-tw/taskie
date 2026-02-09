@@ -4,6 +4,8 @@ Perform a thorough review of ALL code implemented across ALL tasks (completed or
 
 Double check ALL the must-run commands from all tasks by running them and analyzing their results.
 
+**Your review must be a clean slate. Do not look at any prior review files.**
+
 Document the results of your review in `.taskie/plans/{current-plan-dir}/all-code-review-{iteration}.md`.
 
 **Review file naming**:
