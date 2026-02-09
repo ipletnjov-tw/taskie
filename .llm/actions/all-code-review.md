@@ -4,6 +4,8 @@ Perform a thorough review of ALL code implemented across ALL tasks (completed or
 
 Double check ALL the must-run commands from all tasks by running them and analyzing their results.
 
+**Your review must be a clean slate. Do not look at any prior review files.**
+
 Document the results of your review in `.taskie/plans/{current-plan-dir}/all-code-review-{review-id}.md`. If you don't know what the `{current-plan-dir}` is, use git history to find out which plan was modified most recently.
 
 Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
