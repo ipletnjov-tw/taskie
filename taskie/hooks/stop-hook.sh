@@ -4,6 +4,12 @@
 
 set -euo pipefail
 
+# Recursion protection - if we're already in a hook subprocess, exit immediately
+if [ "${TASKIE_HOOK_SKIP:-false}" = "true" ]; then
+    echo '{"suppressOutput": true}'
+    exit 0
+fi
+
 # Logging - each invocation gets its own file under .taskie/logs/
 HOOK_LOG=""
 log() {
@@ -91,6 +97,15 @@ log "RECENT_PLAN=$RECENT_PLAN"
 STATE_FILE="$RECENT_PLAN/state.json"
 PLAN_ID=$(basename "$RECENT_PLAN")
 log "PLAN_ID=$PLAN_ID, STATE_FILE=$STATE_FILE"
+
+# Validate PLAN_ID format (alphanumeric, hyphens, underscores only)
+log "Validating PLAN_ID format"
+if [[ ! "$PLAN_ID" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    log "ERROR: Invalid PLAN_ID format: $PLAN_ID"
+    echo '{"systemMessage": "Invalid plan directory name. Must contain only alphanumeric characters, hyphens, and underscores.", "suppressOutput": true}' >&2
+    exit 2
+fi
+log "PLAN_ID format valid"
 
 # Step 5a: Read state.json if it exists
 log "Checking state.json"
@@ -184,7 +199,12 @@ if [ -f "$STATE_FILE" ]; then
                        '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration' \
                        "$STATE_FILE" > "$TEMP_STATE"
                 fi
-                mv "$TEMP_STATE" "$STATE_FILE"
+                if ! mv "$TEMP_STATE" "$STATE_FILE" 2>/dev/null; then
+                    log "CRITICAL: Failed to write state.json"
+                    echo "{\"systemMessage\": \"Failed to persist workflow state. Check file permissions for $STATE_FILE.\", \"suppressOutput\": true}" >&2
+                    rm -f "$TEMP_STATE"
+                    exit 2
+                fi
                 log "State written: phase=$REVIEW_TYPE next_phase=$ADVANCE_TARGET"
 
                 log "Exiting: max_reviews=0 auto-advance to $ADVANCE_TARGET"
@@ -213,8 +233,9 @@ if [ -f "$STATE_FILE" ]; then
 
             # Step 5d: Prepare for CLI invocation
             REVIEW_FILE="$RECENT_PLAN/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-            LOG_FILE="$RECENT_PLAN/.review-${PHASE_ITERATION}.log"
-            log "REVIEW_FILE=$REVIEW_FILE, LOG_FILE=$LOG_FILE"
+            # Create CLI log file in logs directory for real-time streaming
+            CLI_LOG_FILE=".taskie/logs/cli-$(date '+%Y-%m-%dT%H-%M-%S')-${REVIEW_TYPE}-${PHASE_ITERATION}.log"
+            log "REVIEW_FILE=$REVIEW_FILE, CLI_LOG_FILE=$CLI_LOG_FILE"
 
             # Build task file list for tasks-review and all-code-review
             TASK_FILE_LIST=""
@@ -253,43 +274,53 @@ if [ -f "$STATE_FILE" ]; then
                 log "Found: $TASK_FILE"
             fi
 
-            # Build prompt based on review type
-            log "Building prompt for $REVIEW_TYPE"
-            case "$REVIEW_TYPE" in
-                plan-review)
-                    PROMPT="Review the plan in .taskie/plans/${PLAN_ID}/plan.md. Be critical and thorough. Look for ambiguities, missing details, architectural issues, and potential problems. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/plan.md"
-                    ;;
-                tasks-review)
-                    PROMPT="Review the tasks in .taskie/plans/${PLAN_ID}/tasks.md and the task files: ${TASK_FILE_LIST}. Be critical and thorough. Look for missing subtasks, unclear acceptance criteria, incorrect estimates, and implementation issues. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/tasks.md $TASK_FILE_LIST"
-                    ;;
-                code-review)
-                    PROMPT="Review the implementation for task ${CURRENT_TASK} documented in .taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}.md. Be very critical. Look for bugs, mistakes, incomplete implementations, security issues, and code quality problems. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/task-${CURRENT_TASK}.md"
-                    ;;
-                all-code-review)
-                    PROMPT="Review ALL implementations across ALL tasks documented in .taskie/plans/${PLAN_ID}/tasks.md and task files: ${TASK_FILE_LIST}. Be extremely critical. Look for bugs, integration issues, incomplete features, and overall code quality. Output your review to .taskie/plans/${PLAN_ID}/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
-                    FILES_TO_REVIEW=".taskie/plans/${PLAN_ID}/tasks.md $TASK_FILE_LIST"
-                    ;;
-            esac
-            log "PROMPT=${PROMPT:0:100}... FILES=$FILES_TO_REVIEW"
+            # Build prompt using slash command (single source of truth)
+            PROMPT="/taskie:${REVIEW_TYPE}"
+            log "Using slash command: $PROMPT"
 
             # Invoke claude CLI
             CLI_OUTPUT=""
             log "Checking claude CLI available"
             if command -v claude &> /dev/null; then
                 log "claude CLI found"
-                log "Invoking: claude --model $REVIEW_MODEL --output-format json --dangerously-skip-permissions"
+
+                # Validate review model
+                log "Validating review model: $REVIEW_MODEL"
+                if [[ ! "$REVIEW_MODEL" =~ ^(opus|sonnet)$ ]]; then
+                    log "ERROR: Invalid review model: $REVIEW_MODEL"
+                    echo '{"systemMessage": "Invalid review model configured. Please update state.json with a valid model (opus or sonnet).", "suppressOutput": true}' >&2
+                    exit 2
+                fi
+                log "Review model valid: $REVIEW_MODEL"
+
+                # Build and validate JSON schema
+                JSON_SCHEMA='{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}'
+                log "Validating JSON schema"
+                if ! echo "$JSON_SCHEMA" | jq empty 2>/dev/null; then
+                    log "ERROR: Invalid JSON schema"
+                    echo '{"systemMessage": "Internal error: invalid JSON schema for review validation.", "suppressOutput": true}' >&2
+                    exit 2
+                fi
+                log "JSON schema valid"
+
+                CLI_CMD="TASKIE_HOOK_SKIP=true timeout 120 claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\" 2>&1 | tee -a \"$CLI_LOG_FILE\""
+                log "Invoking: $CLI_CMD"
+                log "CLI output streaming in real-time to: $CLI_LOG_FILE"
                 set +e
-                CLI_OUTPUT=$(claude --print \
+                # Use tee to stream output to log file in real-time while capturing to variable
+                CLI_OUTPUT=$(TASKIE_HOOK_SKIP=true timeout 120 claude --print \
                     --model "$REVIEW_MODEL" \
                     --output-format json \
-                    --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}' \
+                    --json-schema "$JSON_SCHEMA" \
                     --dangerously-skip-permissions \
-                    "$PROMPT" 2>"$LOG_FILE")
+                    "$PROMPT" 2>&1 | tee -a "$CLI_LOG_FILE")
                 CLI_EXIT=$?
                 set -e
+
+                # Check for timeout
+                if [ $CLI_EXIT -eq 124 ]; then
+                    log "ERROR: CLI invocation timed out after 120 seconds"
+                fi
                 log "CLI exit=$CLI_EXIT, output_length=${#CLI_OUTPUT}, review_file_exists=$([ -f "$REVIEW_FILE" ] && echo true || echo false)"
                 # Log last 50 lines of CLI output
                 log "CLI_OUTPUT (last 50 lines):"
@@ -301,8 +332,7 @@ if [ -f "$STATE_FILE" ]; then
                 log "Checking review file written"
                 if [ $CLI_EXIT -eq 0 ] && [ -f "$REVIEW_FILE" ]; then
                     log "YES: $REVIEW_FILE exists"
-                    # Success - clean up log file
-                    rm -f "$LOG_FILE"
+                    log "CLI log preserved at: $CLI_LOG_FILE"
 
                     # Step 5f: Extract verdict from CLI output
                     log "Extracting verdict from CLI output"
@@ -384,7 +414,12 @@ if [ -f "$STATE_FILE" ]; then
                            --argjson tdd "$TDD" \
                            '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .max_reviews = $max_reviews | .current_task = $current_task | .tdd = $tdd' \
                            "$STATE_FILE" > "$TEMP_STATE"
-                        mv "$TEMP_STATE" "$STATE_FILE"
+                        if ! mv "$TEMP_STATE" "$STATE_FILE" 2>/dev/null; then
+                            log "CRITICAL: Failed to write state.json"
+                            echo "{\"systemMessage\": \"Failed to persist workflow state. Check file permissions for $STATE_FILE.\", \"suppressOutput\": true}" >&2
+                            rm -f "$TEMP_STATE"
+                            exit 2
+                        fi
                         log "State written: phase=$REVIEW_TYPE next_phase=$ADVANCE_TARGET cc=$CONSECUTIVE_CLEAN"
 
                         # Approve with message
@@ -426,7 +461,12 @@ if [ -f "$STATE_FILE" ]; then
                        --argjson tdd "$TDD" \
                        '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .max_reviews = $max_reviews | .current_task = $current_task | .tdd = $tdd' \
                        "$STATE_FILE" > "$TEMP_STATE"
-                    mv "$TEMP_STATE" "$STATE_FILE"
+                    if ! mv "$TEMP_STATE" "$STATE_FILE" 2>/dev/null; then
+                        log "CRITICAL: Failed to write state.json"
+                        echo "{\"systemMessage\": \"Failed to persist workflow state. Check file permissions for $STATE_FILE.\", \"suppressOutput\": true}" >&2
+                        rm -f "$TEMP_STATE"
+                        exit 2
+                    fi
                     log "State written: phase=$REVIEW_TYPE next_phase=$POST_REVIEW_PHASE model=$NEW_REVIEW_MODEL cc=$CONSECUTIVE_CLEAN iter=$PHASE_ITERATION"
 
                     # Return block decision with template (message depends on verdict)
@@ -440,7 +480,8 @@ if [ -f "$STATE_FILE" ]; then
                     log "reason=$BLOCK_REASON"
                     jq -n --arg reason "$BLOCK_REASON" '{
                         "decision": "block",
-                        "reason": $reason
+                        "reason": $reason,
+                        "suppressOutput": true
                     }'
                     log "Final exit: code=0 decision=block"
                     exit 0
@@ -629,7 +670,8 @@ else
     log "Final exit: code=0 decision=block"
     jq -n --arg reason "Plan '$PLAN_NAME': $PLAN_ERROR" '{
         "decision": "block",
-        "reason": $reason
+        "reason": $reason,
+        "suppressOutput": true
     }'
 fi
 exit 0

@@ -14,6 +14,9 @@ source "$SCRIPT_DIR/helpers/test-utils.sh"
 # Set hook script for test helpers
 HOOK_SCRIPT="$SCRIPT_DIR/../../taskie/hooks/stop-hook.sh"
 
+# Configure mock claude CLI (needed for Test 18)
+export PATH="$SCRIPT_DIR/helpers:$PATH"
+
 # Verify hook script exists
 if [[ ! -f "$HOOK_SCRIPT" ]]; then
     echo "Error: Hook script not found at $HOOK_SCRIPT"
@@ -252,5 +255,31 @@ else
     fail "Valid state.json incorrectly warned (exit $HOOK_EXIT_CODE)"
 fi
 rm -rf "$TEST_DIR"
+
+# Test 18: TASKIE_HOOK_SKIP env var check and CLI invocation
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
+
+export MOCK_CLAUDE_LOG="$MOCK_LOG"
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="plan-review-1.md"
+export MOCK_CLAUDE_EXIT_CODE=0
+
+# Run hook - verify it sets TASKIE_HOOK_SKIP=true before CLI invocation
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+# Check that hook log shows TASKIE_HOOK_SKIP=true in the CLI invocation
+HOOK_LOG=$(find "$TEST_DIR/.taskie/logs" -name "hook-*.log" | head -1)
+if grep -q "TASKIE_HOOK_SKIP=true.*claude" "$HOOK_LOG"; then
+    pass "TASKIE_HOOK_SKIP set before CLI invocation (recursion protection enabled)"
+else
+    fail "TASKIE_HOOK_SKIP not set in CLI invocation"
+fi
+rm -rf "$TEST_DIR"
+rm -f "$MOCK_LOG"
+unset MOCK_CLAUDE_LOG MOCK_CLAUDE_VERDICT MOCK_CLAUDE_REVIEW_DIR MOCK_CLAUDE_REVIEW_FILE MOCK_CLAUDE_EXIT_CODE
 
 print_results
