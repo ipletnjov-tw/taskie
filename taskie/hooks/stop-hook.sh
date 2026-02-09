@@ -130,6 +130,16 @@ if [ -f "$STATE_FILE" ]; then
         TDD=$(jq -r '(.tdd // false)' "$STATE_FILE" 2>/dev/null)
         log "phase=$PHASE next_phase=$NEXT_PHASE max_reviews=$MAX_REVIEWS current_task=$CURRENT_TASK phase_iteration=$PHASE_ITERATION review_model=$REVIEW_MODEL consecutive_clean=$CONSECUTIVE_CLEAN tdd=$TDD"
 
+        # Validate next_phase is a recognized value
+        log "Validating next_phase value"
+        VALID_PHASES="^(plan-review|tasks-review|code-review|all-code-review|post-plan-review|post-tasks-review|post-code-review|post-all-code-review|create-tasks|complete-task|complete-task-tdd|continue-plan|complete|new-plan|add-task)$"
+        if [ -n "$NEXT_PHASE" ] && ! [[ "$NEXT_PHASE" =~ $VALID_PHASES ]]; then
+            log "ERROR: Invalid next_phase value: $NEXT_PHASE"
+            echo "Stop hook error: Invalid next_phase='$NEXT_PHASE' in state.json. Must be one of: plan-review, tasks-review, code-review, all-code-review, post-*, create-tasks, complete-task, complete-task-tdd, continue-plan, complete, new-plan, add-task" >&2
+            exit 2
+        fi
+        log "next_phase validation passed"
+
         # Check if next_phase is a review phase
         log "Checking if next_phase is review"
         if [[ "$NEXT_PHASE" =~ ^(plan-review|tasks-review|code-review|all-code-review)$ ]]; then
@@ -660,7 +670,7 @@ set -e
 if [ $PLAN_RESULT -eq 0 ]; then
     log "Validation PASS"
     log "Final exit: code=0 decision=approve"
-    echo "{\"systemMessage\": \"Plan '$PLAN_NAME' structure validated successfully\", \"suppressOutput\": true}"
+    echo '{"suppressOutput": true}'
 else
     log "Validation FAIL: $PLAN_ERROR"
     log "Final exit: code=2 (continue conversation)"
