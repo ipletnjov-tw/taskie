@@ -12,33 +12,6 @@ After you're done with your changes, create `.taskie/plans/{current-plan-dir}/co
 
 Update the task status in `.taskie/plans/{current-plan-dir}/tasks.md`.
 
-After implementing fixes, check the workflow context to determine how to update state:
-
-1. Read `.taskie/plans/{current-plan-dir}/state.json`
-2. Check the `phase_iteration` field (must be either null or a non-negative integer; if corrupted, inform user and ask how to proceed):
-   - **If `phase_iteration` is non-null (a number)**: This is AUTOMATED mode (part of a review cycle)
-     - Update `state.json` with:
-       - `phase`: `"post-code-review"`
-       - `next_phase`: `"code-review"` (return to review for another iteration)
-       - Preserve all other fields: `phase_iteration`, `max_reviews`, `review_model`, `consecutive_clean`, `current_task`, `tdd`
-     - Write atomically (temp file + mv)
-     - Example (jq automatically preserves all other fields not explicitly set):
-       ```bash
-       TEMP_STATE=$(mktemp /tmp/taskie.XXXXXX)
-       jq '.phase = "post-code-review" | .next_phase = "code-review"' state.json > "$TEMP_STATE"
-       mv "$TEMP_STATE" state.json
-       ```
-   - **If `phase_iteration` is null or doesn't exist**: This is STANDALONE mode (manual invocation)
-     - Update `state.json` with:
-       - `phase`: `"post-code-review"`
-       - `next_phase`: `null` (standalone, no automation)
-       - Preserve all other fields
-     - Write atomically (temp file + mv)
-     - Example (jq automatically preserves all other fields not explicitly set):
-       ```bash
-       TEMP_STATE=$(mktemp /tmp/taskie.XXXXXX)
-       jq --argjson next_phase null '.phase = "post-code-review" | .next_phase = $next_phase' state.json > "$TEMP_STATE"
-       mv "$TEMP_STATE" state.json
-       ```
+**IMPORTANT: Do NOT update state.json manually.** The stop hook automatically detects when you create the post-review file and manages all state transitions. Just create the post-review file and stop.
 
 Remember, you MUST follow the `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.

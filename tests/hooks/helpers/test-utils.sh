@@ -114,21 +114,22 @@ assert_approved() {
 assert_blocked() {
     local pattern="${1:-}"
 
-    if [ $HOOK_EXIT_CODE -ne 0 ]; then
-        fail "Expected exit code 0, got $HOOK_EXIT_CODE"
+    # Hook blocks using exit code 2
+    if [ $HOOK_EXIT_CODE -ne 2 ]; then
+        fail "Expected exit code 2 (block), got $HOOK_EXIT_CODE"
         return 1
     fi
 
-    # Check for block decision in output
-    if ! echo "$HOOK_STDOUT" | grep -q '"decision"[[:space:]]*:[[:space:]]*"block"'; then
-        fail "Expected block decision in output, but not found"
+    # Check for error message in stderr
+    if ! echo "$HOOK_STDERR" | grep -q "Stop hook error:"; then
+        fail "Expected 'Stop hook error:' in stderr, but not found"
         return 1
     fi
 
-    # If pattern provided, check the reason matches
+    # If pattern provided, check the stderr matches
     if [ -n "$pattern" ]; then
-        if ! echo "$HOOK_STDOUT" | grep -q "$pattern"; then
-            fail "Expected reason matching '$pattern', but not found in output"
+        if ! echo "$HOOK_STDERR" | grep -q "$pattern"; then
+            fail "Expected stderr matching '$pattern', but not found: $HOOK_STDERR"
             return 1
         fi
     fi

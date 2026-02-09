@@ -360,4 +360,137 @@ else
 fi
 cleanup
 
+# Test 17: Auto-detect post-plan-review completion and cycle back
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "plan-review", "next_phase": "post-plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 1}'
+# Create review file (from previous iteration) and post-review file (agent just created this)
+echo "# Plan Review 1" > "$TEST_DIR/.taskie/plans/test-plan/plan-review-1.md"
+echo "# Post Review" > "$TEST_DIR/.taskie/plans/test-plan/plan-post-review-1.md"
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="plan-review-2.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+PHASE=$(jq -r '.phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+NEXT_PHASE=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+ITERATION=$(jq -r '.phase_iteration' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+
+if [ "$PHASE" = "plan-review" ] && [ "$NEXT_PHASE" = "post-plan-review" ] && [ "$ITERATION" = "2" ]; then
+    pass "Auto-detected post-plan-review completion and triggered next review"
+else
+    fail "Auto-transition failed: phase=$PHASE, next_phase=$NEXT_PHASE, iteration=$ITERATION"
+fi
+cleanup
+
+# Test 18: Auto-detect post-tasks-review completion and cycle back
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1 | pending |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "tasks-review", "next_phase": "post-tasks-review", "review_model": "sonnet", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 2}'
+# Create review file (from previous iteration) and post-review file (agent just created this)
+echo "# Tasks Review 2" > "$TEST_DIR/.taskie/plans/test-plan/tasks-review-2.md"
+echo "# Post Review" > "$TEST_DIR/.taskie/plans/test-plan/tasks-post-review-2.md"
+
+export MOCK_CLAUDE_VERDICT="PASS"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="tasks-review-3.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+PHASE=$(jq -r '.phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+NEXT_PHASE=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+ITERATION=$(jq -r '.phase_iteration' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+
+if [ "$PHASE" = "tasks-review" ] && [ "$NEXT_PHASE" = "post-tasks-review" ] && [ "$ITERATION" = "3" ]; then
+    pass "Auto-detected post-tasks-review completion and triggered next review"
+else
+    fail "Auto-transition failed: phase=$PHASE, next_phase=$NEXT_PHASE, iteration=$ITERATION"
+fi
+cleanup
+
+# Test 19: Auto-detect post-code-review completion and cycle back
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "code-review", "next_phase": "post-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": 1, "phase_iteration": 1}'
+# Create review file (from previous iteration) and post-review file (agent just created this)
+echo "# Code Review 1" > "$TEST_DIR/.taskie/plans/test-plan/code-review-1.md"
+echo "# Post Review" > "$TEST_DIR/.taskie/plans/test-plan/code-post-review-1.md"
+
+export MOCK_CLAUDE_VERDICT="PASS"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="code-review-2.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+PHASE=$(jq -r '.phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+NEXT_PHASE=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+ITERATION=$(jq -r '.phase_iteration' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+
+# Should have auto-advanced since consecutive_clean went from 1 to 2
+if [ $HOOK_EXIT_CODE -eq 0 ] && [[ "$NEXT_PHASE" =~ ^(complete-task|all-code-review)$ ]]; then
+    pass "Auto-detected post-code-review completion, triggered review, and auto-advanced"
+else
+    fail "Auto-transition failed: exit=$HOOK_EXIT_CODE, phase=$PHASE, next_phase=$NEXT_PHASE, iteration=$ITERATION"
+fi
+cleanup
+
+# Test 20: Auto-detect post-all-code-review completion and cycle back
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1 | done |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "all-code-review", "next_phase": "post-all-code-review", "review_model": "sonnet", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 3}'
+# Create review file (from previous iteration) and post-review file (agent just created this)
+echo "# All Code Review 3" > "$TEST_DIR/.taskie/plans/test-plan/all-code-review-3.md"
+echo "# Post Review" > "$TEST_DIR/.taskie/plans/test-plan/all-code-post-review-3.md"
+
+export MOCK_CLAUDE_VERDICT="FAIL"
+export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
+export MOCK_CLAUDE_REVIEW_FILE="all-code-review-4.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+PHASE=$(jq -r '.phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+NEXT_PHASE=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+ITERATION=$(jq -r '.phase_iteration' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+
+if [ "$PHASE" = "all-code-review" ] && [ "$NEXT_PHASE" = "post-all-code-review" ] && [ "$ITERATION" = "4" ]; then
+    pass "Auto-detected post-all-code-review completion and triggered next review"
+else
+    fail "Auto-transition failed: phase=$PHASE, next_phase=$NEXT_PHASE, iteration=$ITERATION"
+fi
+cleanup
+
+# Test 21: No auto-transition when post-review file doesn't exist yet
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "plan-review", "next_phase": "post-plan-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 1}'
+# NO post-review file created
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+
+PHASE=$(jq -r '.phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+NEXT_PHASE=$(jq -r '.next_phase' "$TEST_DIR/.taskie/plans/test-plan/state.json")
+
+# Should validate and approve without triggering review
+if [ $HOOK_EXIT_CODE -eq 0 ] && [ "$PHASE" = "plan-review" ] && [ "$NEXT_PHASE" = "post-plan-review" ]; then
+    pass "No auto-transition when post-review file missing (correctly validated and approved)"
+else
+    fail "Should have approved: exit=$HOOK_EXIT_CODE, phase=$PHASE, next_phase=$NEXT_PHASE"
+fi
+cleanup
+
 print_results

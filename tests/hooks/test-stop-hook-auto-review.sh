@@ -103,7 +103,7 @@ TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "Standalone mode (no state.json) falls through to validation"
 else
     fail "Standalone mode not handled correctly (exit $HOOK_EXIT_CODE)"
@@ -116,7 +116,7 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 echo "{ invalid json }" > "$TEST_DIR/.taskie/plans/test-plan/state.json"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDERR" | grep -q "invalid JSON" && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDERR" | grep -q "invalid JSON" && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "Malformed state.json falls through to validation with warning"
 else
     fail "Malformed state.json not handled correctly (exit $HOOK_EXIT_CODE)"
@@ -129,7 +129,7 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": "complete-task", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": 0}'
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "Non-review next_phase falls through to validation"
 else
     fail "Non-review next_phase not handled correctly (exit $HOOK_EXIT_CODE)"
@@ -142,7 +142,7 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "code-review", "next_phase": "post-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": 1, "phase_iteration": 1}'
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "Post-review next_phase falls through to validation"
 else
     fail "Post-review next_phase not handled correctly (exit $HOOK_EXIT_CODE)"
@@ -155,7 +155,7 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 2, "tdd": false, "current_task": 1, "phase_iteration": 0}'
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "null next_phase falls through to validation"
 else
     fail "null next_phase not handled correctly (exit $HOOK_EXIT_CODE)"
@@ -168,7 +168,7 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "Empty next_phase falls through to validation"
 else
     fail "Empty next_phase not handled correctly (exit $HOOK_EXIT_CODE)"
@@ -345,13 +345,13 @@ export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 
-if echo "$HOOK_STDOUT" | grep -q "decision.*block" && \
-   echo "$HOOK_STDOUT" | grep -q "code-review-1.md" && \
-   echo "$HOOK_STDOUT" | grep -q "post-code-review" && \
-   echo "$HOOK_STDOUT" | grep -qi "escape"; then
-    pass "Block message contains decision, review file, action, and escape hatch"
+if [ $HOOK_EXIT_CODE -eq 2 ] && \
+   echo "$HOOK_STDERR" | grep -q "code-review-1.md" && \
+   echo "$HOOK_STDERR" | grep -q "post-code-review" && \
+   echo "$HOOK_STDERR" | grep -qi "escape"; then
+    pass "Block message contains review file, action, and escape hatch"
 else
-    fail "Block message missing required elements (got: $HOOK_STDOUT)"
+    fail "Block message missing required elements (exit=$HOOK_EXIT_CODE, stderr=$HOOK_STDERR)"
 fi
 cleanup
 
@@ -366,13 +366,13 @@ export MOCK_CLAUDE_REVIEW_FILE="plan-review-1.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 
-if echo "$HOOK_STDOUT" | grep -q "decision.*block" && \
-   echo "$HOOK_STDOUT" | grep -q "plan-review-1.md" && \
-   echo "$HOOK_STDOUT" | grep -q "post-plan-review" && \
-   echo "$HOOK_STDOUT" | grep -qi "escape"; then
+if [ $HOOK_EXIT_CODE -eq 2 ] && \
+   echo "$HOOK_STDERR" | grep -q "plan-review-1.md" && \
+   echo "$HOOK_STDERR" | grep -q "post-plan-review" && \
+   echo "$HOOK_STDERR" | grep -qi "escape"; then
     pass "plan-review block message contains required elements"
 else
-    fail "plan-review block message missing required elements (got: $HOOK_STDOUT)"
+    fail "plan-review block message missing required elements (exit=$HOOK_EXIT_CODE, stderr=$HOOK_STDERR)"
 fi
 cleanup
 
@@ -393,13 +393,13 @@ export MOCK_CLAUDE_REVIEW_FILE="tasks-review-1.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 
-if echo "$HOOK_STDOUT" | grep -q "decision.*block" && \
-   echo "$HOOK_STDOUT" | grep -q "tasks-review-1.md" && \
-   echo "$HOOK_STDOUT" | grep -q "post-tasks-review" && \
-   echo "$HOOK_STDOUT" | grep -qi "escape"; then
+if [ $HOOK_EXIT_CODE -eq 2 ] && \
+   echo "$HOOK_STDERR" | grep -q "tasks-review-1.md" && \
+   echo "$HOOK_STDERR" | grep -q "post-tasks-review" && \
+   echo "$HOOK_STDERR" | grep -qi "escape"; then
     pass "tasks-review block message contains required elements"
 else
-    fail "tasks-review block message missing required elements (got: $HOOK_STDOUT)"
+    fail "tasks-review block message missing required elements (exit=$HOOK_EXIT_CODE, stderr=$HOOK_STDERR)"
 fi
 cleanup
 
@@ -420,13 +420,13 @@ export MOCK_CLAUDE_REVIEW_FILE="all-code-review-1.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 
-if echo "$HOOK_STDOUT" | grep -q "decision.*block" && \
-   echo "$HOOK_STDOUT" | grep -q "all-code-review-1.md" && \
-   echo "$HOOK_STDOUT" | grep -q "post-all-code-review" && \
-   echo "$HOOK_STDOUT" | grep -qi "escape"; then
+if [ $HOOK_EXIT_CODE -eq 2 ] && \
+   echo "$HOOK_STDERR" | grep -q "all-code-review-1.md" && \
+   echo "$HOOK_STDERR" | grep -q "post-all-code-review" && \
+   echo "$HOOK_STDERR" | grep -qi "escape"; then
     pass "all-code-review block message contains required elements"
 else
-    fail "all-code-review block message missing required elements (got: $HOOK_STDOUT)"
+    fail "all-code-review block message missing required elements (exit=$HOOK_EXIT_CODE, stderr=$HOOK_STDERR)"
 fi
 cleanup
 
@@ -441,10 +441,10 @@ export MOCK_CLAUDE_REVIEW_FILE="plan-review-1.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 
-if echo "$HOOK_STDOUT" | jq -e '.decision == "block" and .reason != null' >/dev/null 2>&1; then
-    pass "Block decision has valid JSON format with decision and reason fields"
+if [ $HOOK_EXIT_CODE -eq 2 ] && [ -n "$HOOK_STDERR" ] && echo "$HOOK_STDERR" | grep -q "Stop hook error:"; then
+    pass "Block decision uses exit code 2 with stderr message"
 else
-    fail "Block decision JSON format invalid (got: $HOOK_STDOUT)"
+    fail "Block decision format invalid (exit=$HOOK_EXIT_CODE, stderr=$HOOK_STDERR)"
 fi
 cleanup
 

@@ -1,15 +1,17 @@
 # Implement Post-Review Fixes
 
-Address the issues surfaced by the latest code review in `.llm/plans/{current-plan-dir}/task-{current-task-id}-review-{latest-review-id}.md`
+Address the issues surfaced by the latest code review in `.taskie/plans/{current-plan-dir}/code-review-{iteration}.md`. The review file name follows the pattern `{review-type}-{iteration}.md` where iteration comes from `phase_iteration` in state.json for automated reviews.
 
-If you don't know what the `{current-plan-dir}`, `{current-task-id}` or `{latest-review-id}` are, use git history to find out which plan, task and review file was modified most recently.
+If you don't know what the `{current-plan-dir}` or `{iteration}` are, use git history to find out which plan and review file was modified most recently.
 
-After you're done with your changes, create `.llm/plans/{current-plan-dir}/task-{current-task-id}-post-review-{latest-review-id}.md` documenting:
+After you're done with your changes, create `.taskie/plans/{current-plan-dir}/code-post-review-{iteration}.md` documenting:
 - Summary of issues addressed from the review
 - Changes made to fix each issue
 - Update the status and git commit hash of the subtask(s)
 - Any relevant notes or decisions made
 
-Update the task status in `.llm/plans/{current-plan-dir}/tasks.md`.
+Update the task status in `.taskie/plans/{current-plan-dir}/tasks.md`.
 
-Remember, you MUST follow the `.llm/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.
+**IMPORTANT: Do NOT update state.json manually.** The stop hook automatically detects when you create the post-review file and manages all state transitions. Just create the post-review file and stop.
+
+Remember, you MUST follow the `@${CLAUDE_PLUGIN_ROOT}/ground-rules.md` at ALL times. Do NOT forget to push your changes to remote.

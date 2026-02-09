@@ -140,6 +140,58 @@ if [ -f "$STATE_FILE" ]; then
         fi
         log "next_phase validation passed"
 
+        # AUTOMATIC STATE TRANSITION DETECTION
+        # Detect if agent just completed a post-review action and auto-update state
+        log "Detecting agent completion (phase=$PHASE, next_phase=$NEXT_PHASE)"
+        if [[ "$PHASE" =~ ^(plan-review|tasks-review|code-review|all-code-review)$ ]] && \
+           [[ "$NEXT_PHASE" =~ ^(post-plan-review|post-tasks-review|post-code-review|post-all-code-review)$ ]]; then
+            # Extract base review type (plan-review, tasks-review, etc)
+            REVIEW_BASE="${PHASE}"
+            POST_REVIEW_FILE="$RECENT_PLAN/${NEXT_PHASE}-${PHASE_ITERATION}.md"
+            log "Checking for post-review completion: $POST_REVIEW_FILE"
+
+            if [ -f "$POST_REVIEW_FILE" ]; then
+                log "DETECTED: Agent completed post-review (file exists: $POST_REVIEW_FILE)"
+                log "Auto-updating state: phase=$NEXT_PHASE → next_phase=$REVIEW_BASE (cycle back to review)"
+
+                # Update state atomically: phase=post-X-review, next_phase=X-review
+                TEMP_STATE=$(mktemp "${STATE_FILE}.XXXXXX")
+                # Handle current_task as number or null (not string)
+                if [ "$CURRENT_TASK" = "null" ] || [ -z "$CURRENT_TASK" ]; then
+                    CURRENT_TASK_JSON="null"
+                else
+                    CURRENT_TASK_JSON="$CURRENT_TASK"
+                fi
+                jq --arg phase "$NEXT_PHASE" \
+                   --arg next_phase "$REVIEW_BASE" \
+                   --argjson phase_iteration "$PHASE_ITERATION" \
+                   --arg review_model "$REVIEW_MODEL" \
+                   --argjson consecutive_clean "$CONSECUTIVE_CLEAN" \
+                   --argjson max_reviews "$MAX_REVIEWS" \
+                   --argjson current_task "$CURRENT_TASK_JSON" \
+                   --argjson tdd "$TDD" \
+                   '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .max_reviews = $max_reviews | .current_task = $current_task | .tdd = $tdd' \
+                   "$STATE_FILE" > "$TEMP_STATE"
+                if ! mv "$TEMP_STATE" "$STATE_FILE" 2>/dev/null; then
+                    log "CRITICAL: Failed to write state.json during auto-transition"
+                    echo "{\"systemMessage\": \"Failed to persist workflow state. Check file permissions for $STATE_FILE.\", \"suppressOutput\": true}" >&2
+                    rm -f "$TEMP_STATE"
+                    exit 2
+                fi
+                log "State updated: phase=$NEXT_PHASE next_phase=$REVIEW_BASE"
+
+                # Re-read state for next iteration
+                log "Re-reading state.json after auto-update"
+                PHASE=$(jq -r '(.phase // "")' "$STATE_FILE" 2>/dev/null)
+                NEXT_PHASE=$(jq -r '(.next_phase // "")' "$STATE_FILE" 2>/dev/null)
+                log "Updated state: phase=$PHASE next_phase=$NEXT_PHASE"
+            else
+                log "No post-review file found (expected at $POST_REVIEW_FILE), continuing"
+            fi
+        else
+            log "No auto-transition needed (phase/next_phase don't match post-review pattern)"
+        fi
+
         # Check if next_phase is a review phase
         log "Checking if next_phase is review"
         if [[ "$NEXT_PHASE" =~ ^(plan-review|tasks-review|code-review|all-code-review)$ ]]; then
