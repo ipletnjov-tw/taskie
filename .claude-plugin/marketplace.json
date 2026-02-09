@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Plugin marketplace for the Taskie mini-framework",
-    "version": "3.1.8",
+    "version": "3.1.9",
     "pluginRoot": "."
   },
   "plugins": [
@@ -17,7 +17,7 @@
         "name": "Igor Pletnjov",
         "url": "https://github.com/ipletnjov-tw"
       },
-      "version": "3.1.8",
+      "version": "3.1.9",
       "keywords": ["task-management", "planning", "workflow", "engineering", "quality"],
       "homepage": "https://github.com/ipletnjov-tw/taskie",
       "repository": "https://github.com/ipletnjov-tw/taskie.git"
