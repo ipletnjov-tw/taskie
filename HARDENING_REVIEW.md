@@ -45,13 +45,15 @@ fi
 ```bash
 # Validate review model
 log "Validating review model: $REVIEW_MODEL"
-if [[ ! "$REVIEW_MODEL" =~ ^(opus|sonnet|haiku)$ ]]; then
+if [[ ! "$REVIEW_MODEL" =~ ^(opus|sonnet)$ ]]; then
     log "ERROR: Invalid review model: $REVIEW_MODEL"
-    echo '{"systemMessage": "Invalid review model configured. Please update state.json with a valid model (opus, sonnet, or haiku).", "suppressOutput": true}' >&2
+    echo '{"systemMessage": "Invalid review model configured. Please update state.json with a valid model (opus or sonnet).", "suppressOutput": true}' >&2
     exit 2
 fi
 log "Review model valid: $REVIEW_MODEL"
 ```
+
+**Note**: Only "opus" and "sonnet" are validated because the hook's alternation logic (lines 433-437) only supports these two models. Adding support for "haiku" would require updating the alternation logic.
 
 **Rationale**: Catches configuration errors early before spawning subprocess
 
@@ -197,6 +199,39 @@ All 83 tests pass with hardened implementation:
 - ⚠️ JSON schema validation - NOW FIXED ✅
 - ⚠️ PLAN_ID validation - NOW FIXED ✅
 - ⚠️ suppressOutput on blocks - NOW FIXED ✅
+
+---
+
+## Post-Implementation Corrections
+
+After initial hardening implementation, the following corrections were made:
+
+### 1. Version Bump (v3.1.0 → v3.1.1)
+**Issue**: Forgot to bump version after non-test changes
+**Fix**: Updated version in 4 locations:
+- `taskie/.claude-plugin/plugin.json`
+- `.claude-plugin/marketplace.json` (2 locations)
+- `README.md`
+
+### 2. Model Validation Scope Correction
+**Issue**: Initially validated `opus|sonnet|haiku` but hook only supports `opus|sonnet` alternation
+**Problem**: Hook's model toggle logic (lines 433-437) only alternates between opus and sonnet:
+```bash
+if [ "$REVIEW_MODEL" = "opus" ]; then
+    NEW_REVIEW_MODEL="sonnet"
+else
+    NEW_REVIEW_MODEL="opus"
+fi
+```
+**Fix**: Corrected validation regex to match actual behavior: `^(opus|sonnet)$`
+**Result**: Validation now consistent with alternation logic
+
+### 3. Test 4 Update
+**Issue**: Test expected hook to pass invalid model to CLI (old behavior)
+**Fix**: Updated test to expect hook-level validation rejection (exit 2) with new behavior
+**Rationale**: Production hardening means validating inputs before spawning expensive subprocesses
+
+**All Tests**: 83/83 passing ✅
 
 ---
 
