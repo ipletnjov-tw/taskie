@@ -31,7 +31,8 @@ tests/
     ├── test-stop-hook-state-transitions.sh  # Test suite 3: state transitions
     ├── test-stop-hook-cli-invocation.sh     # Test suite 4: CLI invocation
     ├── test-stop-hook-edge-cases.sh   # Test suite 6: edge cases & integration
-    └── test-stop-hook-logging.sh      # Test suite 7: logging
+    ├── test-stop-hook-logging.sh      # Test suite 7: hook logging
+    └── test-stop-hook-cli-logging.sh  # Test suite 8: CLI real-time logging
 
 Repo root:
 ├── run-tests.sh                       # Test runner script
@@ -98,9 +99,9 @@ Test suite 6 tests edge cases and integration scenarios:
 - State field preservation
 - 12 tests total
 
-## Test Suite 7: Logging
+## Test Suite 7: Hook Logging
 
-Test suite 7 tests the per-invocation logging system:
+Test suite 7 tests the per-invocation hook logging system:
 - Log directory creation (`.taskie/logs/`)
 - Log file creation per invocation (`hook-{timestamp}.log`)
 - Invocation header present in log
@@ -111,6 +112,18 @@ Test suite 7 tests the per-invocation logging system:
 - No log files for non-Taskie projects
 - Multiple invocations create separate files
 - 9 tests total
+
+## Test Suite 8: CLI Real-Time Logging
+
+Test suite 8 tests the real-time Claude CLI output logging with `tee`:
+- CLI log file created (`.taskie/logs/cli-{timestamp}-{type}-{iter}.log`)
+- CLI log filename pattern includes review type and iteration
+- CLI log contains mock JSON output (verdict, session_id, cost)
+- CLI log preserved after successful review (not deleted)
+- Hook log references CLI log file location
+- Multiple CLI invocations create separate log files
+- CLI log filename format validation (timestamp + type + iteration)
+- 7 tests total
 
 ## Shared Test Helpers
 
