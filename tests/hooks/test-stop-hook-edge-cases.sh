@@ -73,23 +73,16 @@ else
 fi
 cleanup
 
-# Test 4: review_model is unexpected value - hook passes it to CLI (CLI handles validation)
-MOCK_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
+# Test 4: review_model is unexpected value - hook validates and rejects with exit 2
 TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-plan-review", "next_phase": "plan-review", "review_model": "haiku", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
-export MOCK_CLAUDE_LOG="$MOCK_LOG"
-export MOCK_CLAUDE_VERDICT="FAIL"
-export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
-export MOCK_CLAUDE_REVIEW_FILE="plan-review-1.md"
-export MOCK_CLAUDE_EXIT_CODE=0
-
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ -f "$MOCK_LOG" ] && grep -q -- "--model haiku" "$MOCK_LOG"; then
-    pass "Unexpected review_model value passed to CLI correctly"
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid review model"; then
+    pass "Invalid review_model rejected with exit 2"
 else
-    fail "Unexpected review_model not passed to CLI"
+    fail "Invalid review_model not rejected correctly (exit $HOOK_EXIT_CODE)"
 fi
 cleanup
 
