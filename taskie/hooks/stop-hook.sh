@@ -303,12 +303,12 @@ if [ -f "$STATE_FILE" ]; then
                 fi
                 log "JSON schema valid"
 
-                CLI_CMD="TASKIE_HOOK_SKIP=true timeout 120 claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\" 2>&1 | tee -a \"$CLI_LOG_FILE\""
+                CLI_CMD="TASKIE_HOOK_SKIP=true timeout 1700 claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\" 2>&1 | tee -a \"$CLI_LOG_FILE\""
                 log "Invoking: $CLI_CMD"
                 log "CLI output streaming in real-time to: $CLI_LOG_FILE"
                 set +e
                 # Use tee to stream output to log file in real-time while capturing to variable
-                CLI_OUTPUT=$(TASKIE_HOOK_SKIP=true timeout 120 claude --print \
+                CLI_OUTPUT=$(TASKIE_HOOK_SKIP=true timeout 1700 claude --print \
                     --model "$REVIEW_MODEL" \
                     --output-format json \
                     --json-schema "$JSON_SCHEMA" \
@@ -319,7 +319,7 @@ if [ -f "$STATE_FILE" ]; then
 
                 # Check for timeout
                 if [ $CLI_EXIT -eq 124 ]; then
-                    log "ERROR: CLI invocation timed out after 120 seconds"
+                    log "ERROR: CLI invocation timed out after 1700 seconds (28 minutes)"
                 fi
                 log "CLI exit=$CLI_EXIT, output_length=${#CLI_OUTPUT}, review_file_exists=$([ -f "$REVIEW_FILE" ] && echo true || echo false)"
                 # Log last 50 lines of CLI output
