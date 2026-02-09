@@ -98,6 +98,15 @@ STATE_FILE="$RECENT_PLAN/state.json"
 PLAN_ID=$(basename "$RECENT_PLAN")
 log "PLAN_ID=$PLAN_ID, STATE_FILE=$STATE_FILE"
 
+# Validate PLAN_ID format (alphanumeric, hyphens, underscores only)
+log "Validating PLAN_ID format"
+if [[ ! "$PLAN_ID" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    log "ERROR: Invalid PLAN_ID format: $PLAN_ID"
+    echo '{"systemMessage": "Invalid plan directory name. Must contain only alphanumeric characters, hyphens, and underscores.", "suppressOutput": true}' >&2
+    exit 2
+fi
+log "PLAN_ID format valid"
+
 # Step 5a: Read state.json if it exists
 log "Checking state.json"
 if [ -f "$STATE_FILE" ]; then
@@ -190,7 +199,12 @@ if [ -f "$STATE_FILE" ]; then
                        '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration' \
                        "$STATE_FILE" > "$TEMP_STATE"
                 fi
-                mv "$TEMP_STATE" "$STATE_FILE"
+                if ! mv "$TEMP_STATE" "$STATE_FILE" 2>/dev/null; then
+                    log "CRITICAL: Failed to write state.json"
+                    echo "{\"systemMessage\": \"Failed to persist workflow state. Check file permissions for $STATE_FILE.\", \"suppressOutput\": true}" >&2
+                    rm -f "$TEMP_STATE"
+                    exit 2
+                fi
                 log "State written: phase=$REVIEW_TYPE next_phase=$ADVANCE_TARGET"
 
                 log "Exiting: max_reviews=0 auto-advance to $ADVANCE_TARGET"
@@ -268,11 +282,30 @@ if [ -f "$STATE_FILE" ]; then
             log "Checking claude CLI available"
             if command -v claude &> /dev/null; then
                 log "claude CLI found"
+
+                # Validate review model
+                log "Validating review model: $REVIEW_MODEL"
+                if [[ ! "$REVIEW_MODEL" =~ ^(opus|sonnet|haiku)$ ]]; then
+                    log "ERROR: Invalid review model: $REVIEW_MODEL"
+                    echo '{"systemMessage": "Invalid review model configured. Please update state.json with a valid model (opus, sonnet, or haiku).", "suppressOutput": true}' >&2
+                    exit 2
+                fi
+                log "Review model valid: $REVIEW_MODEL"
+
+                # Build and validate JSON schema
                 JSON_SCHEMA='{"type":"object","properties":{"verdict":{"type":"string","enum":["PASS","FAIL"]}},"required":["verdict"]}'
-                CLI_CMD="TASKIE_HOOK_SKIP=true claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\""
+                log "Validating JSON schema"
+                if ! echo "$JSON_SCHEMA" | jq empty 2>/dev/null; then
+                    log "ERROR: Invalid JSON schema"
+                    echo '{"systemMessage": "Internal error: invalid JSON schema for review validation.", "suppressOutput": true}' >&2
+                    exit 2
+                fi
+                log "JSON schema valid"
+
+                CLI_CMD="TASKIE_HOOK_SKIP=true timeout 120 claude --print --model $REVIEW_MODEL --output-format json --json-schema '$JSON_SCHEMA' --dangerously-skip-permissions \"$PROMPT\""
                 log "Invoking: $CLI_CMD"
                 set +e
-                CLI_OUTPUT=$(TASKIE_HOOK_SKIP=true claude --print \
+                CLI_OUTPUT=$(TASKIE_HOOK_SKIP=true timeout 120 claude --print \
                     --model "$REVIEW_MODEL" \
                     --output-format json \
                     --json-schema "$JSON_SCHEMA" \
@@ -280,6 +313,11 @@ if [ -f "$STATE_FILE" ]; then
                     "$PROMPT" 2>"$LOG_FILE")
                 CLI_EXIT=$?
                 set -e
+
+                # Check for timeout
+                if [ $CLI_EXIT -eq 124 ]; then
+                    log "ERROR: CLI invocation timed out after 120 seconds"
+                fi
                 log "CLI exit=$CLI_EXIT, output_length=${#CLI_OUTPUT}, review_file_exists=$([ -f "$REVIEW_FILE" ] && echo true || echo false)"
                 # Log last 50 lines of CLI output
                 log "CLI_OUTPUT (last 50 lines):"
@@ -374,7 +412,12 @@ if [ -f "$STATE_FILE" ]; then
                            --argjson tdd "$TDD" \
                            '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .max_reviews = $max_reviews | .current_task = $current_task | .tdd = $tdd' \
                            "$STATE_FILE" > "$TEMP_STATE"
-                        mv "$TEMP_STATE" "$STATE_FILE"
+                        if ! mv "$TEMP_STATE" "$STATE_FILE" 2>/dev/null; then
+                            log "CRITICAL: Failed to write state.json"
+                            echo "{\"systemMessage\": \"Failed to persist workflow state. Check file permissions for $STATE_FILE.\", \"suppressOutput\": true}" >&2
+                            rm -f "$TEMP_STATE"
+                            exit 2
+                        fi
                         log "State written: phase=$REVIEW_TYPE next_phase=$ADVANCE_TARGET cc=$CONSECUTIVE_CLEAN"
 
                         # Approve with message
@@ -416,7 +459,12 @@ if [ -f "$STATE_FILE" ]; then
                        --argjson tdd "$TDD" \
                        '.phase = $phase | .next_phase = $next_phase | .phase_iteration = $phase_iteration | .review_model = $review_model | .consecutive_clean = $consecutive_clean | .max_reviews = $max_reviews | .current_task = $current_task | .tdd = $tdd' \
                        "$STATE_FILE" > "$TEMP_STATE"
-                    mv "$TEMP_STATE" "$STATE_FILE"
+                    if ! mv "$TEMP_STATE" "$STATE_FILE" 2>/dev/null; then
+                        log "CRITICAL: Failed to write state.json"
+                        echo "{\"systemMessage\": \"Failed to persist workflow state. Check file permissions for $STATE_FILE.\", \"suppressOutput\": true}" >&2
+                        rm -f "$TEMP_STATE"
+                        exit 2
+                    fi
                     log "State written: phase=$REVIEW_TYPE next_phase=$POST_REVIEW_PHASE model=$NEW_REVIEW_MODEL cc=$CONSECUTIVE_CLEAN iter=$PHASE_ITERATION"
 
                     # Return block decision with template (message depends on verdict)
@@ -430,7 +478,8 @@ if [ -f "$STATE_FILE" ]; then
                     log "reason=$BLOCK_REASON"
                     jq -n --arg reason "$BLOCK_REASON" '{
                         "decision": "block",
-                        "reason": $reason
+                        "reason": $reason,
+                        "suppressOutput": true
                     }'
                     log "Final exit: code=0 decision=block"
                     exit 0
@@ -619,7 +668,8 @@ else
     log "Final exit: code=0 decision=block"
     jq -n --arg reason "Plan '$PLAN_NAME': $PLAN_ERROR" '{
         "decision": "block",
-        "reason": $reason
+        "reason": $reason,
+        "suppressOutput": true
     }'
 fi
 exit 0

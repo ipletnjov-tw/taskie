@@ -15,6 +15,7 @@ if [ -n "${MOCK_CLAUDE_LOG:-}" ]; then
     echo "" >> "$MOCK_CLAUDE_LOG"
 fi
 
+
 # Simulate delay if requested
 if [ -n "${MOCK_CLAUDE_DELAY:-}" ]; then
     sleep "$MOCK_CLAUDE_DELAY"
