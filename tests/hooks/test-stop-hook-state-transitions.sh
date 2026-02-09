@@ -61,7 +61,7 @@ create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation
 
 export MOCK_CLAUDE_VERDICT="FAIL"
 export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
-export MOCK_CLAUDE_REVIEW_FILE="code-review-3.md"
+export MOCK_CLAUDE_REVIEW_FILE="task-1-code-review-3.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 
@@ -134,7 +134,7 @@ create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "complete-task"
 
 export MOCK_CLAUDE_VERDICT="FAIL"
 export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
-export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
+export MOCK_CLAUDE_REVIEW_FILE="task-1-code-review-1.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 
@@ -299,7 +299,7 @@ create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation
 export MOCK_CLAUDE_LOG="$MOCK_LOG"
 export MOCK_CLAUDE_VERDICT="PASS"
 export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
-export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
+export MOCK_CLAUDE_REVIEW_FILE="task-1-code-review-1.md"
 export MOCK_CLAUDE_EXIT_CODE=0
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
@@ -422,12 +422,12 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "code-review", "next_phase": "post-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 1, "tdd": false, "current_task": 1, "phase_iteration": 1}'
 # Create review file (from previous iteration) and post-review file (agent just created this)
-echo "# Code Review 1" > "$TEST_DIR/.taskie/plans/test-plan/code-review-1.md"
-echo "# Post Review" > "$TEST_DIR/.taskie/plans/test-plan/code-post-review-1.md"
+echo "# Code Review 1" > "$TEST_DIR/.taskie/plans/test-plan/task-1-code-review-1.md"
+echo "# Post Review" > "$TEST_DIR/.taskie/plans/test-plan/task-1-code-post-review-1.md"
 
 export MOCK_CLAUDE_VERDICT="PASS"
 export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
-export MOCK_CLAUDE_REVIEW_FILE="code-review-2.md"
+export MOCK_CLAUDE_REVIEW_FILE="task-1-code-review-2.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 

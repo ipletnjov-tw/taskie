@@ -151,7 +151,7 @@ MOCK_CLAUDE_LOG=$(mktemp /tmp/taskie-test.XXXXXX)
 export MOCK_CLAUDE_LOG
 # The mock needs to create the review file - extract plan dir
 export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
-export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"
+export MOCK_CLAUDE_REVIEW_FILE="task-1-code-review-1.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\"}" || true
 

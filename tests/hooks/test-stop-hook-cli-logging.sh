@@ -203,7 +203,7 @@ create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-all-code-
 export MOCK_CLAUDE_LOG="$MOCK_LOG"
 export MOCK_CLAUDE_VERDICT="FAIL"
 export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
-export MOCK_CLAUDE_REVIEW_FILE="all-code-review-1.md"
+export MOCK_CLAUDE_REVIEW_FILE="all-task-1-code-review-1.md"
 export MOCK_CLAUDE_EXIT_CODE=0
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true

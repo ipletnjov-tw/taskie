@@ -57,9 +57,6 @@ Each plan will have the same basic directory structure:
 │   │   ├── . . .
 │   │   ├── tasks-review-n.md            # Task List and Tasks Review n
 │   │   ├── tasks-post-review-n.md       # Post-Review Fixes Summary n
-│   │   ├── code-review-1.md             # Code Review 1 (per-task)
-│   │   ├── code-post-review-1.md        # Code Post-Review Fixes Summary 1
-│   │   ├── . . .
 │   │   ├── all-code-review-1.md         # Complete Implementation Review 1
 │   │   ├── all-code-post-review-1.md    # Post-Review Fixes Summary 1
 │   │   ├── . . .
@@ -70,9 +67,15 @@ Each plan will have the same basic directory structure:
 │   │   ├── task-1-post-review-1.md      # Post-Review Fixes Summary 1
 │   │   ├── task-1-review-2.md           # Task 1 Review 2
 │   │   ├── task-1-post-review-2.md      # Post-Review Fixes Summary 2
+│   │   ├── task-1-code-review-1.md      # Task 1 Code Review 1
+│   │   ├── task-1-code-post-review-1.md # Task 1 Code Post-Review Fixes 1
+│   │   ├── task-1-code-review-2.md      # Task 1 Code Review 2
+│   │   ├── task-1-code-post-review-2.md # Task 1 Code Post-Review Fixes 2
 │   │   ├── task-2.md                    # Task 2 and Subtasks
 │   │   ├── task-2-review-1.md           # Task 2 Review 1
 │   │   ├── task-2-post-review-1.md      # Post-Review Fixes Summary 1
+│   │   ├── task-2-code-review-1.md      # Task 2 Code Review 1
+│   │   ├── task-2-code-post-review-1.md # Task 2 Code Post-Review Fixes 1
 │   │   ├── task-3.md                    # Task 3 and Subtasks
 │   │   ├── . . .
 │   │   ├── task-n.md                    # Task n and Subtasks
@@ -98,6 +101,12 @@ After addressing issues from a tasks review, a `tasks-post-review-{review-id}.md
 
 Each task will have its own `task-{task-id}.md` file and a number of `task-{task-id}-review-{review-id}.md` review files.
 After addressing issues from a task review, a `task-{task-id}-post-review-{review-id}.md` file documents the fixes made.
+
+Each task implementation will have code review files `task-{task-id}-code-review-{review-id}.md` that critically review the code changes.
+After addressing issues from a code review, a `task-{task-id}-code-post-review-{review-id}.md` file documents the fixes made.
+
+After all tasks are complete, the plan may have `all-code-review-{review-id}.md` files that review the complete implementation across all tasks.
+After addressing issues from a complete implementation review, an `all-code-post-review-{review-id}.md` file documents the fixes made.
 
 ## Tasks
 

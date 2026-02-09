@@ -282,4 +282,341 @@ rm -rf "$TEST_DIR"
 rm -f "$MOCK_LOG"
 unset MOCK_CLAUDE_LOG MOCK_CLAUDE_VERDICT MOCK_CLAUDE_REVIEW_DIR MOCK_CLAUDE_REVIEW_FILE MOCK_CLAUDE_EXIT_CODE
 
+# Test 19: Invalid filename pattern (Rule 2)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+# Create file with invalid pattern
+echo "# Invalid" > "$TEST_DIR/.taskie/plans/test-plan/code-review-1-response.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename"; then
+    pass "Invalid filename pattern correctly blocked (exit 2)"
+else
+    fail "Invalid filename pattern not caught (exit $HOOK_EXIT_CODE)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 20: Review file missing post-review (Rule 5b)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+# Create multiple review files but missing post-review for iteration 1
+echo "# Plan Review 1" > "$TEST_DIR/.taskie/plans/test-plan/plan-review-1.md"
+echo "# Plan Review 2" > "$TEST_DIR/.taskie/plans/test-plan/plan-review-2.md"
+echo "# Post Review 2" > "$TEST_DIR/.taskie/plans/test-plan/plan-post-review-2.md"
+# Missing plan-post-review-1.md
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "plan-review-1.md requires plan-post-review-1.md"; then
+    pass "Review missing post-review correctly blocked (exit 2)"
+else
+    fail "Review missing post-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 21: task-X-code-review without task file (Rule 7)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1  | done   |
+EOF
+# Create code review for task-2 but no task-2.md file
+echo "# Code Review" > "$TEST_DIR/.taskie/plans/test-plan/task-2-code-review-1.md"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "task-2-code-review-1.md requires task-2.md"; then
+    pass "Code review without task file correctly blocked (exit 2)"
+else
+    fail "Code review without task file not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 22: Invalid non-.md files (Rule 9)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+# Create garbage files
+touch "$TEST_DIR/.taskie/plans/test-plan/.review-1.log"
+echo "garbage" > "$TEST_DIR/.taskie/plans/test-plan/random.txt"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid file in plan directory"; then
+    pass "Invalid non-.md files correctly blocked (exit 2)"
+else
+    fail "Invalid non-.md files not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 23: Old code-review pattern should be invalid (Rule 2)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Old pattern" > "$TEST_DIR/.taskie/plans/test-plan/code-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename.*code-review-1.md"; then
+    pass "Old code-review-N.md pattern correctly blocked (exit 2)"
+else
+    fail "Old code-review pattern not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 24: Old code-post-review pattern should be invalid (Rule 2)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Old pattern" > "$TEST_DIR/.taskie/plans/test-plan/code-post-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename.*code-post-review-1.md"; then
+    pass "Old code-post-review-N.md pattern correctly blocked (exit 2)"
+else
+    fail "Old code-post-review pattern not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 25: Completely random .md filename (Rule 2)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Random" > "$TEST_DIR/.taskie/plans/test-plan/random-garbage-file.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename.*random-garbage-file.md"; then
+    pass "Random .md filename correctly blocked (exit 2)"
+else
+    fail "Random .md filename not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 26: design-review without design.md (Rule 4)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Design Review" > "$TEST_DIR/.taskie/plans/test-plan/design-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "design-review-1.md requires design.md"; then
+    pass "design-review without design.md correctly blocked (exit 2)"
+else
+    fail "design-review without design.md not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 27: tasks-review without tasks.md (Rule 4)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Tasks Review" > "$TEST_DIR/.taskie/plans/test-plan/tasks-review-1.md"
+rm -f "$TEST_DIR/.taskie/plans/test-plan/tasks.md"  # Remove tasks.md from create_test_plan
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "tasks-review-1.md requires tasks.md"; then
+    pass "tasks-review without tasks.md correctly blocked (exit 2)"
+else
+    fail "tasks-review without tasks.md not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 28: tasks-post-review without tasks-review (Rule 5)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Post Review" > "$TEST_DIR/.taskie/plans/test-plan/tasks-post-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "tasks-post-review-1.md requires tasks-review-1.md"; then
+    pass "tasks-post-review without tasks-review correctly blocked (exit 2)"
+else
+    fail "tasks-post-review without tasks-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 29: task-X-post-review without task-X-review (Rule 5)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+echo "# Post Review" > "$TEST_DIR/.taskie/plans/test-plan/task-1-post-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "task-1-post-review-1.md requires task-1-review-1.md"; then
+    pass "task-X-post-review without task-X-review correctly blocked (exit 2)"
+else
+    fail "task-X-post-review without task-X-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 30: task-X-code-post-review without task-X-code-review (Rule 5)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+echo "# Code Post Review" > "$TEST_DIR/.taskie/plans/test-plan/task-1-code-post-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "task-1-code-post-review-1.md requires task-1-code-review-1.md"; then
+    pass "task-X-code-post-review without task-X-code-review correctly blocked (exit 2)"
+else
+    fail "task-X-code-post-review without task-X-code-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 31: tasks-review missing post-review (Rule 5b)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Tasks Review 1" > "$TEST_DIR/.taskie/plans/test-plan/tasks-review-1.md"
+echo "# Tasks Review 2" > "$TEST_DIR/.taskie/plans/test-plan/tasks-review-2.md"
+echo "# Post Review 2" > "$TEST_DIR/.taskie/plans/test-plan/tasks-post-review-2.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "tasks-review-1.md requires tasks-post-review-1.md"; then
+    pass "tasks-review missing post-review correctly blocked (exit 2)"
+else
+    fail "tasks-review missing post-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 32: task-X-review missing post-review (Rule 5b)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+echo "# Task Review 1" > "$TEST_DIR/.taskie/plans/test-plan/task-1-review-1.md"
+echo "# Task Review 2" > "$TEST_DIR/.taskie/plans/test-plan/task-1-review-2.md"
+echo "# Post Review 2" > "$TEST_DIR/.taskie/plans/test-plan/task-1-post-review-2.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "task-1-review-1.md requires task-1-post-review-1.md"; then
+    pass "task-X-review missing post-review correctly blocked (exit 2)"
+else
+    fail "task-X-review missing post-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 33: task-X-code-review missing post-review (Rule 5b)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+echo "# Code Review 1" > "$TEST_DIR/.taskie/plans/test-plan/task-1-code-review-1.md"
+echo "# Code Review 2" > "$TEST_DIR/.taskie/plans/test-plan/task-1-code-review-2.md"
+echo "# Code Post Review 2" > "$TEST_DIR/.taskie/plans/test-plan/task-1-code-post-review-2.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "task-1-code-review-1.md requires task-1-code-post-review-1.md"; then
+    pass "task-X-code-review missing post-review correctly blocked (exit 2)"
+else
+    fail "task-X-code-review missing post-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 34: all-code-review missing post-review (Rule 5b)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
+| Id | Status |
+|----|--------|
+| 1  | done   |
+EOF
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+echo "# All Code Review 1" > "$TEST_DIR/.taskie/plans/test-plan/all-code-review-1.md"
+echo "# All Code Review 2" > "$TEST_DIR/.taskie/plans/test-plan/all-code-review-2.md"
+echo "# Post Review 2" > "$TEST_DIR/.taskie/plans/test-plan/all-code-post-review-2.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "all-code-review-1.md requires all-code-post-review-1.md"; then
+    pass "all-code-review missing post-review correctly blocked (exit 2)"
+else
+    fail "all-code-review missing post-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 35: Various non-.md file extensions (Rule 9)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/script.sh"
+echo "code" > "$TEST_DIR/.taskie/plans/test-plan/file.js"
+echo "data" > "$TEST_DIR/.taskie/plans/test-plan/config.json"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid file in plan directory"; then
+    pass "Various non-.md extensions correctly blocked (exit 2)"
+else
+    fail "Various non-.md extensions not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 36: design-review missing post-review (Rule 5b)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Design" > "$TEST_DIR/.taskie/plans/test-plan/design.md"
+echo "# Design Review 1" > "$TEST_DIR/.taskie/plans/test-plan/design-review-1.md"
+echo "# Design Review 2" > "$TEST_DIR/.taskie/plans/test-plan/design-review-2.md"
+echo "# Post Review 2" > "$TEST_DIR/.taskie/plans/test-plan/design-post-review-2.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "design-review-1.md requires design-post-review-1.md"; then
+    pass "design-review missing post-review correctly blocked (exit 2)"
+else
+    fail "design-review missing post-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 37: Most recent iteration does NOT require post-review (negative test)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Plan Review 1" > "$TEST_DIR/.taskie/plans/test-plan/plan-review-1.md"
+echo "# Post Review 1" > "$TEST_DIR/.taskie/plans/test-plan/plan-post-review-1.md"
+echo "# Plan Review 2" > "$TEST_DIR/.taskie/plans/test-plan/plan-review-2.md"
+# plan-review-2.md is most recent, should NOT require post-review
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 0 ]; then
+    pass "Most recent review iteration does not require post-review (exit 0)"
+else
+    fail "Most recent iteration incorrectly required post-review (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 38: Multiple missing post-reviews (3+ iterations)
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Plan Review 1" > "$TEST_DIR/.taskie/plans/test-plan/plan-review-1.md"
+echo "# Plan Review 2" > "$TEST_DIR/.taskie/plans/test-plan/plan-review-2.md"
+echo "# Plan Review 3" > "$TEST_DIR/.taskie/plans/test-plan/plan-review-3.md"
+echo "# Post Review 3" > "$TEST_DIR/.taskie/plans/test-plan/plan-post-review-3.md"
+# Missing plan-post-review-1.md and plan-post-review-2.md
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "plan-review-1.md requires plan-post-review-1.md" && echo "$HOOK_STDERR" | grep -q "plan-review-2.md requires plan-post-review-2.md"; then
+    pass "Multiple missing post-reviews correctly blocked (exit 2)"
+else
+    fail "Multiple missing post-reviews not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 39: Different task IDs - task-2-code-review
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-2.md"
+echo "# Code Review 1" > "$TEST_DIR/.taskie/plans/test-plan/task-2-code-review-1.md"
+echo "# Code Review 2" > "$TEST_DIR/.taskie/plans/test-plan/task-2-code-review-2.md"
+echo "# Post Review 2" > "$TEST_DIR/.taskie/plans/test-plan/task-2-code-post-review-2.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "task-2-code-review-1.md requires task-2-code-post-review-1.md"; then
+    pass "task-2-code-review missing post-review correctly blocked (exit 2)"
+else
+    fail "task-2-code-review missing post-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 40: task-3-review missing post-review
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-3.md"
+echo "# Task Review 1" > "$TEST_DIR/.taskie/plans/test-plan/task-3-review-1.md"
+echo "# Task Review 2" > "$TEST_DIR/.taskie/plans/test-plan/task-3-review-2.md"
+echo "# Post Review 2" > "$TEST_DIR/.taskie/plans/test-plan/task-3-post-review-2.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "task-3-review-1.md requires task-3-post-review-1.md"; then
+    pass "task-3-review missing post-review correctly blocked (exit 2)"
+else
+    fail "task-3-review missing post-review not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
 print_results

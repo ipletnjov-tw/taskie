@@ -113,7 +113,7 @@ touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
 export MOCK_CLAUDE_LOG="$MOCK_LOG"
 export MOCK_CLAUDE_VERDICT="FAIL"
 export MOCK_CLAUDE_REVIEW_DIR="$TEST_DIR/.taskie/plans/test-plan"
-export MOCK_CLAUDE_REVIEW_FILE="code-review-1.md"  # phase_iteration 0 → first review is iteration 1
+export MOCK_CLAUDE_REVIEW_FILE="task-1-code-review-1.md"  # phase_iteration 0 → first review is iteration 1
 export MOCK_CLAUDE_EXIT_CODE=0
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true

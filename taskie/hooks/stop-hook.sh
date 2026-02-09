@@ -151,9 +151,14 @@ if [ -f "$STATE_FILE" ]; then
         if [ "$PHASE_MATCH" = "true" ] && [ "$NEXT_PHASE_MATCH" = "true" ]; then
             # Extract base review type (plan, tasks, code, all-code)
             REVIEW_BASE="${PHASE}"
-            # Convert review phase to post-review filename: plan-review → plan-post-review
-            BASE_NAME="${PHASE%-review}"  # Remove -review suffix
-            POST_REVIEW_FILE="$RECENT_PLAN/${BASE_NAME}-post-review-${PHASE_ITERATION}.md"
+            # Convert review phase to post-review filename
+            # Code reviews are task-specific and include task number
+            if [ "$PHASE" = "code-review" ]; then
+                POST_REVIEW_FILE="$RECENT_PLAN/task-${CURRENT_TASK}-code-post-review-${PHASE_ITERATION}.md"
+            else
+                BASE_NAME="${PHASE%-review}"  # Remove -review suffix
+                POST_REVIEW_FILE="$RECENT_PLAN/${BASE_NAME}-post-review-${PHASE_ITERATION}.md"
+            fi
             log "Checking for post-review completion: $POST_REVIEW_FILE"
 
             if [ -f "$POST_REVIEW_FILE" ]; then
@@ -300,7 +305,17 @@ if [ -f "$STATE_FILE" ]; then
             log "Within limit: continuing (phase_iteration=$PHASE_ITERATION <= max_reviews=$MAX_REVIEWS)"
 
             # Step 5d: Prepare for CLI invocation
-            REVIEW_FILE="$RECENT_PLAN/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
+            # Code reviews are task-specific and include task number in filename
+            if [ "$REVIEW_TYPE" = "code-review" ]; then
+                if [ -z "$CURRENT_TASK" ] || [ "$CURRENT_TASK" = "null" ]; then
+                    log "ERROR: code-review requires current_task to be set"
+                    echo '{"systemMessage": "Cannot perform code review: current_task not set in state.json", "suppressOutput": true}'
+                    exit 0
+                fi
+                REVIEW_FILE="$RECENT_PLAN/task-${CURRENT_TASK}-code-review-${PHASE_ITERATION}.md"
+            else
+                REVIEW_FILE="$RECENT_PLAN/${REVIEW_TYPE}-${PHASE_ITERATION}.md"
+            fi
             # Create CLI log file in logs directory for real-time streaming
             CLI_LOG_FILE=".taskie/logs/cli-$(date '+%Y-%m-%dT%H-%M-%S')-${REVIEW_TYPE}-${PHASE_ITERATION}.log"
             log "REVIEW_FILE=$REVIEW_FILE, CLI_LOG_FILE=$CLI_LOG_FILE"
@@ -396,13 +411,33 @@ if [ -f "$STATE_FILE" ]; then
                     log "  $line"
                 done
 
-                # Step 5e: Verify review file was written
+                # Step 5e: Extract and write review content from CLI output
+                if [ $CLI_EXIT -eq 0 ]; then
+                    log "Extracting review content from CLI JSON output"
+                    REVIEW_CONTENT=$(echo "$CLI_OUTPUT" | jq -r '.result' 2>/dev/null || echo "")
+
+                    if [ -n "$REVIEW_CONTENT" ] && [ "$REVIEW_CONTENT" != "null" ] && [ "$REVIEW_CONTENT" != "" ]; then
+                        log "Writing review content to $REVIEW_FILE (length=${#REVIEW_CONTENT})"
+                        echo "$REVIEW_CONTENT" > "$REVIEW_FILE"
+
+                        # Git add the review file so it's tracked
+                        if command -v git &> /dev/null && git rev-parse --git-dir > /dev/null 2>&1; then
+                            log "Git adding review file"
+                            git add "$REVIEW_FILE" 2>/dev/null || log "WARNING: Failed to git add $REVIEW_FILE"
+                        fi
+                        log "Review file written successfully"
+                    else
+                        log "WARNING: No review content in CLI output (result field empty or null)"
+                    fi
+                fi
+
+                # Step 5f: Verify review file was written
                 log "Checking review file written"
                 if [ $CLI_EXIT -eq 0 ] && [ -f "$REVIEW_FILE" ]; then
                     log "YES: $REVIEW_FILE exists"
                     log "CLI log preserved at: $CLI_LOG_FILE"
 
-                    # Step 5f: Extract verdict from CLI output
+                    # Step 5g: Extract verdict from CLI output
                     log "Extracting verdict from CLI output"
                     VERDICT=$(echo "$CLI_OUTPUT" | jq -r '.result.verdict' 2>/dev/null || echo "")
                     log "VERDICT=$VERDICT"
@@ -417,7 +452,7 @@ if [ -f "$STATE_FILE" ]; then
                     fi
                     log "consecutive_clean=$CONSECUTIVE_CLEAN (verdict=$VERDICT)"
 
-                    # Step 5g: Check for auto-advance (consecutive_clean >= 2)
+                    # Step 5h: Check for auto-advance (consecutive_clean >= 2)
                     log "Checking auto-advance: consecutive_clean=$CONSECUTIVE_CLEAN >= 2?"
                     if [ "$CONSECUTIVE_CLEAN" -ge 2 ]; then
                         log "YES: determining advance target"
@@ -497,7 +532,7 @@ if [ -f "$STATE_FILE" ]; then
                     fi
                     log "NO: consecutive_clean=$CONSECUTIVE_CLEAN < 2, will block"
 
-                    # Step 5h: Non-advance - update state and block
+                    # Step 5i: Non-advance - update state and block
                     # Toggle review model
                     log "Toggling review model (was $REVIEW_MODEL)"
                     if [ "$REVIEW_MODEL" = "opus" ]; then
@@ -601,20 +636,22 @@ validate_plan_structure() {
         # - plan-review-{n}.md, design-review-{n}.md, tasks-review-{n}.md
         # - all-code-review-{n}.md
         # - task-{id}-review-{n}.md
+        # - task-{id}-code-review-{n}.md (task-specific code reviews)
         # - plan-post-review-{n}.md, design-post-review-{n}.md, tasks-post-review-{n}.md
         # - all-code-post-review-{n}.md
         # - task-{id}-post-review-{n}.md
+        # - task-{id}-code-post-review-{n}.md (task-specific code post-reviews)
 
         if [[ ! "$filename" =~ ^(plan|design|tasks)\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+\.md$ ]] && \
            [[ ! "$filename" =~ ^(plan|design|tasks)-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^code-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^all-code-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-code-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^(plan|design|tasks)-post-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^code-post-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^all-code-post-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-post-review-[0-9]+\.md$ ]]; then
+           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-post-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-code-post-review-[0-9]+\.md$ ]]; then
             add_error "Invalid filename: $filename"
         fi
     done
@@ -648,6 +685,52 @@ validate_plan_structure() {
         fi
     done
 
+    # Rule 5b: Review files (except most recent) need post-review files
+    # Group review files by type and check that all but the latest have post-review files
+    for review_pattern in "plan-review-" "design-review-" "tasks-review-" "all-code-review-" "task-*-review-" "task-*-code-review-"; do
+        # Find all review files matching this pattern
+        local review_files=()
+        for file in "$plan_dir"/${review_pattern}[0-9]*.md; do
+            [ -e "$file" ] || continue
+            review_files+=("$(basename "$file")")
+        done
+
+        # Skip if no files found
+        [ ${#review_files[@]} -eq 0 ] && continue
+
+        # Group by base name (e.g., "plan-review", "task-1-review", "task-1-code-review")
+        declare -A review_groups
+        for file in "${review_files[@]}"; do
+            # Extract base name and iteration
+            local base=$(echo "$file" | sed 's/-[0-9]\+\.md$//')
+            local iter=$(echo "$file" | sed 's/^.*-\([0-9]\+\)\.md$/\1/')
+            review_groups["$base"]+="$iter "
+        done
+
+        # Check each group
+        for base in "${!review_groups[@]}"; do
+            local iterations=(${review_groups[$base]})
+            # Sort numerically to find max
+            local max_iter=0
+            for iter in "${iterations[@]}"; do
+                [ "$iter" -gt "$max_iter" ] && max_iter=$iter
+            done
+
+            # Check that all iterations except max have post-review files
+            for iter in "${iterations[@]}"; do
+                if [ "$iter" -lt "$max_iter" ]; then
+                    local post_review_file="${base}-post-review-${iter}.md"
+                    # Handle code-review special case: convert "task-X-code-review" to "task-X-code-post-review"
+                    post_review_file=$(echo "$post_review_file" | sed 's/-review-post-review-/-post-review-/')
+                    if [ ! -f "$plan_dir/$post_review_file" ]; then
+                        add_error "${base}-${iter}.md requires $post_review_file"
+                    fi
+                fi
+            done
+        done
+        unset review_groups
+    done
+
     # Rule 6: If task files exist, tasks.md should exist
     if ls "$plan_dir"/task-*.md 2>/dev/null | grep -v "review" | grep -q .; then
         if [ ! -f "$plan_dir/tasks.md" ]; then
@@ -655,12 +738,15 @@ validate_plan_structure() {
         fi
     fi
 
-    # Rule 7: code-review-*.md files require at least one task file
-    if ls "$plan_dir"/code-review-[0-9]*.md 2>/dev/null | grep -q .; then
-        if ! ls "$plan_dir"/task-*.md 2>/dev/null | grep -v "review" | grep -q .; then
-            add_error "code-review files exist but no task files found"
+    # Rule 7: task-*-code-review-*.md files require corresponding task file
+    for code_review_file in "$plan_dir"/task-*-code-review-[0-9]*.md; do
+        [ -e "$code_review_file" ] || continue
+        # Extract task ID from filename: task-{id}-code-review-{n}.md
+        local task_id=$(basename "$code_review_file" | sed 's/^task-\([^-]*\)-code-review-.*$/\1/')
+        if [ ! -f "$plan_dir/task-${task_id}.md" ]; then
+            add_error "$(basename "$code_review_file") requires task-${task_id}.md"
         fi
-    fi
+    done
 
     # Rule 8: tasks.md must contain ONLY a markdown table
     if [ -f "$plan_dir/tasks.md" ]; then
@@ -708,6 +794,18 @@ validate_plan_structure() {
             fi
         fi
     fi
+
+    # Rule 9: Check for invalid files (only .md and state.json allowed)
+    for file in "$plan_dir"/*; do
+        [ -e "$file" ] || continue
+        [ -d "$file" ] && continue  # Skip directories
+        local filename=$(basename "$file")
+
+        # Allowed files: *.md, state.json
+        if [[ ! "$filename" =~ \.md$ ]] && [ "$filename" != "state.json" ]; then
+            add_error "Invalid file in plan directory: $filename (only .md files and state.json allowed)"
+        fi
+    done
 
     if [ -n "$errors" ]; then
         echo "$errors"

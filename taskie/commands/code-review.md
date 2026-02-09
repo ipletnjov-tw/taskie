@@ -6,13 +6,13 @@ Double check ALL the must-run commands by running them and analyzing their resul
 
 **Your review must be a clean slate. Do not look at any prior review files.**
 
-Document the results of your review in `.taskie/plans/{current-plan-dir}/code-review-{iteration}.md`.
+Document the results of your review in `.taskie/plans/{current-plan-dir}/task-{current-task-id}-code-review-{iteration}.md`.
 
 **Review file naming (CRITICAL - ALWAYS create a NEW file, NEVER modify existing):**
-- Find all existing `code-review-*.md` files in the plan directory
+- Find all existing `task-{current-task-id}-code-review-*.md` files in the plan directory
 - Use `max(existing iteration numbers) + 1` as the iteration number
-- Example: if `code-review-1.md` and `code-review-2.md` exist, create `code-review-3.md`
-- If no review files exist, start with `code-review-1.md`
+- Example: if `task-1-code-review-1.md` and `task-1-code-review-2.md` exist, create `task-1-code-review-3.md`
+- If no review files exist for this task, start with `task-{current-task-id}-code-review-1.md`
 - **NEVER overwrite an existing review file**
 
 If you don't know what the `{current-plan-dir}` or `{current-task-id}` are, use git history to find out which plan and task was modified most recently.
