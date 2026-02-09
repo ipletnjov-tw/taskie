@@ -480,8 +480,7 @@ if [ -f "$STATE_FILE" ]; then
                     log "reason=$BLOCK_REASON"
                     jq -n --arg reason "$BLOCK_REASON" '{
                         "decision": "block",
-                        "reason": $reason,
-                        "suppressOutput": true
+                        "reason": $reason
                     }'
                     log "Final exit: code=0 decision=block"
                     exit 0
@@ -670,8 +669,7 @@ else
     log "Final exit: code=0 decision=block"
     jq -n --arg reason "Plan '$PLAN_NAME': $PLAN_ERROR" '{
         "decision": "block",
-        "reason": $reason,
-        "suppressOutput": true
+        "reason": $reason
     }'
 fi
 exit 0
