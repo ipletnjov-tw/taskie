@@ -15,6 +15,212 @@ HOOK_LOG=""
 log() {
     [ -n "$HOOK_LOG" ] && echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$HOOK_LOG" 2>/dev/null || true
 }
+# Validation function - collects ALL violations
+validate_plan_structure() {
+    local plan_dir="$1"
+    local errors=""
+
+    add_error() {
+        if [ -z "$errors" ]; then
+            errors="$1"
+        else
+            errors="$errors; $1"
+        fi
+    }
+
+    # Rule 1: plan.md must exist
+    if [ ! -f "$plan_dir/plan.md" ]; then
+        add_error "Missing required file: plan.md"
+    fi
+
+    # Rule 2: Validate file naming conventions
+    for file in "$plan_dir"/*.md; do
+        [ -e "$file" ] || continue
+        local filename=$(basename "$file")
+
+        # Valid patterns:
+        # - plan.md, design.md, tasks.md
+        # - task-{id}.md
+        # - plan-review-{n}.md, design-review-{n}.md, tasks-review-{n}.md
+        # - all-code-review-{n}.md
+        # - task-{id}-review-{n}.md
+        # - task-{id}-code-review-{n}.md (task-specific code reviews)
+        # - plan-post-review-{n}.md, design-post-review-{n}.md, tasks-post-review-{n}.md
+        # - all-code-post-review-{n}.md
+        # - task-{id}-post-review-{n}.md
+        # - task-{id}-code-post-review-{n}.md (task-specific code post-reviews)
+
+        if [[ ! "$filename" =~ ^(plan|design|tasks)\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^(plan|design|tasks)-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^all-code-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-code-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^(plan|design|tasks)-post-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^all-code-post-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-post-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-code-post-review-[0-9]+\.md$ ]]; then
+            add_error "Invalid filename: $filename"
+        fi
+    done
+
+    # Rule 3: Check for nested directories (files should be directly in plan dir)
+    if find "$plan_dir" -mindepth 2 -type f -name "*.md" 2>/dev/null | grep -q .; then
+        add_error "Files found in nested directories"
+    fi
+
+    # Rule 4: Review files need their base files
+    for review_file in "$plan_dir"/*-review-[0-9]*.md; do
+        [ -e "$review_file" ] || continue
+
+        local base_name=$(basename "$review_file" | sed 's/-review-[0-9]*.md$//')
+
+        if [ "$base_name" = "plan" ] || [ "$base_name" = "design" ] || [ "$base_name" = "tasks" ]; then
+            if [ ! -f "$plan_dir/${base_name}.md" ]; then
+                add_error "$(basename "$review_file") requires ${base_name}.md"
+            fi
+        fi
+    done
+
+    # Rule 5: Post-review files need their review files
+    for post_review in "$plan_dir"/*-post-review-[0-9]*.md; do
+        [ -e "$post_review" ] || continue
+
+        local review_file=$(basename "$post_review" | sed 's/-post-review-/-review-/')
+
+        if [ ! -f "$plan_dir/$review_file" ]; then
+            add_error "$(basename "$post_review") requires $review_file"
+        fi
+    done
+
+    # Rule 5b: Review files (except most recent) need post-review files
+    # Group review files by type and check that all but the latest have post-review files
+    for review_pattern in "plan-review-" "design-review-" "tasks-review-" "all-code-review-" "task-*-review-" "task-*-code-review-"; do
+        # Find all review files matching this pattern
+        local review_files=()
+        for file in "$plan_dir"/${review_pattern}[0-9]*.md; do
+            [ -e "$file" ] || continue
+            review_files+=("$(basename "$file")")
+        done
+
+        # Skip if no files found
+        [ ${#review_files[@]} -eq 0 ] && continue
+
+        # Group by base name (e.g., "plan-review", "task-1-review", "task-1-code-review")
+        declare -A review_groups
+        for file in "${review_files[@]}"; do
+            # Extract base name and iteration
+            local base=$(echo "$file" | sed 's/-[0-9]\+\.md$//')
+            local iter=$(echo "$file" | sed 's/^.*-\([0-9]\+\)\.md$/\1/')
+            review_groups["$base"]+="$iter "
+        done
+
+        # Check each group
+        for base in "${!review_groups[@]}"; do
+            local iterations=(${review_groups[$base]})
+            # Sort numerically to find max
+            local max_iter=0
+            for iter in "${iterations[@]}"; do
+                [ "$iter" -gt "$max_iter" ] && max_iter=$iter
+            done
+
+            # Check that all iterations except max have post-review files
+            for iter in "${iterations[@]}"; do
+                if [ "$iter" -lt "$max_iter" ]; then
+                    local post_review_file="${base}-post-review-${iter}.md"
+                    # Handle code-review special case: convert "task-X-code-review" to "task-X-code-post-review"
+                    post_review_file=$(echo "$post_review_file" | sed 's/-review-post-review-/-post-review-/')
+                    if [ ! -f "$plan_dir/$post_review_file" ]; then
+                        add_error "${base}-${iter}.md requires $post_review_file"
+                    fi
+                fi
+            done
+        done
+        unset review_groups
+    done
+
+    # Rule 6: If task files exist, tasks.md should exist
+    if ls "$plan_dir"/task-*.md 2>/dev/null | grep -v "review" | grep -q .; then
+        if [ ! -f "$plan_dir/tasks.md" ]; then
+            add_error "Task files exist but tasks.md is missing"
+        fi
+    fi
+
+    # Rule 7: task-*-code-review-*.md files require corresponding task file
+    for code_review_file in "$plan_dir"/task-*-code-review-[0-9]*.md; do
+        [ -e "$code_review_file" ] || continue
+        # Extract task ID from filename: task-{id}-code-review-{n}.md
+        local task_id=$(basename "$code_review_file" | sed 's/^task-\([^-]*\)-code-review-.*$/\1/')
+        if [ ! -f "$plan_dir/task-${task_id}.md" ]; then
+            add_error "$(basename "$code_review_file") requires task-${task_id}.md"
+        fi
+    done
+
+    # Rule 8: tasks.md must contain ONLY a markdown table
+    if [ -f "$plan_dir/tasks.md" ]; then
+        local table_error=""
+        while IFS= read -r line || [ -n "$line" ]; do
+            [ -z "$line" ] && continue
+            if [[ ! "$line" =~ ^\|.*\|$ ]]; then
+                table_error="tasks.md contains non-table content"
+                break
+            fi
+        done < "$plan_dir/tasks.md"
+
+        if [ -n "$table_error" ]; then
+            add_error "$table_error"
+        elif ! grep -q "^|" "$plan_dir/tasks.md"; then
+            add_error "tasks.md has no table rows"
+        else
+            # Check for at least one data row (header + separator + data = 3 rows minimum)
+            local row_count=$(grep "^|" "$plan_dir/tasks.md" | wc -l)
+            if [ "$row_count" -lt 3 ]; then
+                add_error "tasks.md has no task rows (header-only table)"
+            fi
+        fi
+    fi
+
+    # Rule 8: state.json validation (if exists)
+    if [ -f "$plan_dir/state.json" ]; then
+        # Validate JSON syntax
+        if ! jq empty "$plan_dir/state.json" 2>/dev/null; then
+            echo "Warning: state.json contains invalid JSON" >&2
+        else
+            # Validate required fields exist (null is a valid value for next_phase, current_task, phase_iteration)
+            local missing_fields=""
+            jq -r 'has("phase")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}phase "
+            jq -r 'has("next_phase")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}next_phase "
+            jq -r 'has("review_model")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}review_model "
+            jq -r 'has("max_reviews")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}max_reviews "
+            jq -r 'has("consecutive_clean")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}consecutive_clean "
+            jq -r 'has("tdd")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}tdd "
+            jq -r 'has("current_task")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}current_task "
+            jq -r 'has("phase_iteration")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}phase_iteration "
+
+            if [ -n "$missing_fields" ]; then
+                echo "Warning: state.json missing required fields: ${missing_fields}" >&2
+            fi
+        fi
+    fi
+
+    # Rule 9: Check for invalid files (only .md and state.json allowed)
+    for file in "$plan_dir"/*; do
+        [ -e "$file" ] || continue
+        [ -d "$file" ] && continue  # Skip directories
+        local filename=$(basename "$file")
+
+        # Allowed files: *.md, state.json
+        if [[ ! "$filename" =~ \.md$ ]] && [ "$filename" != "state.json" ]; then
+            add_error "Invalid file in plan directory: $filename (only .md files and state.json allowed)"
+        fi
+    done
+
+    if [ -n "$errors" ]; then
+        echo "$errors"
+        return 1
+    fi
+    return 0
+}
 
 # Check for required dependencies
 log "Checking jq dependency"
@@ -93,10 +299,9 @@ if [ -z "$RECENT_PLAN" ]; then
 fi
 log "RECENT_PLAN=$RECENT_PLAN"
 
-# Step 5: Auto-review logic
-STATE_FILE="$RECENT_PLAN/state.json"
+# Step 4: Validate plan structure FIRST (before any review logic)
 PLAN_ID=$(basename "$RECENT_PLAN")
-log "PLAN_ID=$PLAN_ID, STATE_FILE=$STATE_FILE"
+log "PLAN_ID=$PLAN_ID"
 
 # Validate PLAN_ID format (alphanumeric, hyphens, underscores only)
 log "Validating PLAN_ID format"
@@ -107,6 +312,25 @@ if [[ ! "$PLAN_ID" =~ ^[a-zA-Z0-9_-]+$ ]]; then
 fi
 log "PLAN_ID format valid"
 
+# CRITICAL: Validate plan structure FIRST before any review logic
+log "Running validation on $RECENT_PLAN (pre-check before review)"
+set +e
+PLAN_ERROR=$(validate_plan_structure "$RECENT_PLAN")
+PLAN_RESULT=$?
+set -e
+
+if [ $PLAN_RESULT -ne 0 ]; then
+    log "Validation FAILED: $PLAN_ERROR"
+    PLAN_NAME=$(basename "$RECENT_PLAN")
+    echo "Stop hook error: Plan '$PLAN_NAME': $PLAN_ERROR" >&2
+    exit 2
+fi
+log "Validation PASSED"
+
+# Step 5: Auto-review logic
+STATE_FILE="$RECENT_PLAN/state.json"
+log "STATE_FILE=$STATE_FILE"
+
 # Step 5a: Read state.json if it exists
 log "Checking state.json"
 if [ -f "$STATE_FILE" ]; then
@@ -114,7 +338,7 @@ if [ -f "$STATE_FILE" ]; then
     # Validate JSON syntax
     log "Parsing state.json"
     if ! jq empty "$STATE_FILE" 2>/dev/null; then
-        log "state.json invalid JSON, falling through to validation"
+        log "state.json invalid JSON, no review triggered, approving"
         echo "Warning: state.json contains invalid JSON, falling back to validation" >&2
     else
         log "state.json valid JSON"
@@ -600,237 +824,15 @@ if [ -f "$STATE_FILE" ]; then
                 exit 0
             fi
         else
-            log "NO: next_phase=$NEXT_PHASE is not a review phase, falling through to validation"
+            log "NO: next_phase=$NEXT_PHASE is not a review phase, no review triggered, approving"
         fi
     fi
 else
-    log "state.json not found, falling through to validation"
+    log "state.json not found, no review triggered, approving"
 fi
 
-# Validation function - collects ALL violations
-validate_plan_structure() {
-    local plan_dir="$1"
-    local errors=""
-
-    add_error() {
-        if [ -z "$errors" ]; then
-            errors="$1"
-        else
-            errors="$errors; $1"
-        fi
-    }
-
-    # Rule 1: plan.md must exist
-    if [ ! -f "$plan_dir/plan.md" ]; then
-        add_error "Missing required file: plan.md"
-    fi
-
-    # Rule 2: Validate file naming conventions
-    for file in "$plan_dir"/*.md; do
-        [ -e "$file" ] || continue
-        local filename=$(basename "$file")
-
-        # Valid patterns:
-        # - plan.md, design.md, tasks.md
-        # - task-{id}.md
-        # - plan-review-{n}.md, design-review-{n}.md, tasks-review-{n}.md
-        # - all-code-review-{n}.md
-        # - task-{id}-review-{n}.md
-        # - task-{id}-code-review-{n}.md (task-specific code reviews)
-        # - plan-post-review-{n}.md, design-post-review-{n}.md, tasks-post-review-{n}.md
-        # - all-code-post-review-{n}.md
-        # - task-{id}-post-review-{n}.md
-        # - task-{id}-code-post-review-{n}.md (task-specific code post-reviews)
-
-        if [[ ! "$filename" =~ ^(plan|design|tasks)\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^(plan|design|tasks)-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^all-code-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-code-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^(plan|design|tasks)-post-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^all-code-post-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-post-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-code-post-review-[0-9]+\.md$ ]]; then
-            add_error "Invalid filename: $filename"
-        fi
-    done
-
-    # Rule 3: Check for nested directories (files should be directly in plan dir)
-    if find "$plan_dir" -mindepth 2 -type f -name "*.md" 2>/dev/null | grep -q .; then
-        add_error "Files found in nested directories"
-    fi
-
-    # Rule 4: Review files need their base files
-    for review_file in "$plan_dir"/*-review-[0-9]*.md; do
-        [ -e "$review_file" ] || continue
-
-        local base_name=$(basename "$review_file" | sed 's/-review-[0-9]*.md$//')
-
-        if [ "$base_name" = "plan" ] || [ "$base_name" = "design" ] || [ "$base_name" = "tasks" ]; then
-            if [ ! -f "$plan_dir/${base_name}.md" ]; then
-                add_error "$(basename "$review_file") requires ${base_name}.md"
-            fi
-        fi
-    done
-
-    # Rule 5: Post-review files need their review files
-    for post_review in "$plan_dir"/*-post-review-[0-9]*.md; do
-        [ -e "$post_review" ] || continue
-
-        local review_file=$(basename "$post_review" | sed 's/-post-review-/-review-/')
-
-        if [ ! -f "$plan_dir/$review_file" ]; then
-            add_error "$(basename "$post_review") requires $review_file"
-        fi
-    done
-
-    # Rule 5b: Review files (except most recent) need post-review files
-    # Group review files by type and check that all but the latest have post-review files
-    for review_pattern in "plan-review-" "design-review-" "tasks-review-" "all-code-review-" "task-*-review-" "task-*-code-review-"; do
-        # Find all review files matching this pattern
-        local review_files=()
-        for file in "$plan_dir"/${review_pattern}[0-9]*.md; do
-            [ -e "$file" ] || continue
-            review_files+=("$(basename "$file")")
-        done
-
-        # Skip if no files found
-        [ ${#review_files[@]} -eq 0 ] && continue
-
-        # Group by base name (e.g., "plan-review", "task-1-review", "task-1-code-review")
-        declare -A review_groups
-        for file in "${review_files[@]}"; do
-            # Extract base name and iteration
-            local base=$(echo "$file" | sed 's/-[0-9]\+\.md$//')
-            local iter=$(echo "$file" | sed 's/^.*-\([0-9]\+\)\.md$/\1/')
-            review_groups["$base"]+="$iter "
-        done
-
-        # Check each group
-        for base in "${!review_groups[@]}"; do
-            local iterations=(${review_groups[$base]})
-            # Sort numerically to find max
-            local max_iter=0
-            for iter in "${iterations[@]}"; do
-                [ "$iter" -gt "$max_iter" ] && max_iter=$iter
-            done
-
-            # Check that all iterations except max have post-review files
-            for iter in "${iterations[@]}"; do
-                if [ "$iter" -lt "$max_iter" ]; then
-                    local post_review_file="${base}-post-review-${iter}.md"
-                    # Handle code-review special case: convert "task-X-code-review" to "task-X-code-post-review"
-                    post_review_file=$(echo "$post_review_file" | sed 's/-review-post-review-/-post-review-/')
-                    if [ ! -f "$plan_dir/$post_review_file" ]; then
-                        add_error "${base}-${iter}.md requires $post_review_file"
-                    fi
-                fi
-            done
-        done
-        unset review_groups
-    done
-
-    # Rule 6: If task files exist, tasks.md should exist
-    if ls "$plan_dir"/task-*.md 2>/dev/null | grep -v "review" | grep -q .; then
-        if [ ! -f "$plan_dir/tasks.md" ]; then
-            add_error "Task files exist but tasks.md is missing"
-        fi
-    fi
-
-    # Rule 7: task-*-code-review-*.md files require corresponding task file
-    for code_review_file in "$plan_dir"/task-*-code-review-[0-9]*.md; do
-        [ -e "$code_review_file" ] || continue
-        # Extract task ID from filename: task-{id}-code-review-{n}.md
-        local task_id=$(basename "$code_review_file" | sed 's/^task-\([^-]*\)-code-review-.*$/\1/')
-        if [ ! -f "$plan_dir/task-${task_id}.md" ]; then
-            add_error "$(basename "$code_review_file") requires task-${task_id}.md"
-        fi
-    done
-
-    # Rule 8: tasks.md must contain ONLY a markdown table
-    if [ -f "$plan_dir/tasks.md" ]; then
-        local table_error=""
-        while IFS= read -r line || [ -n "$line" ]; do
-            [ -z "$line" ] && continue
-            if [[ ! "$line" =~ ^\|.*\|$ ]]; then
-                table_error="tasks.md contains non-table content"
-                break
-            fi
-        done < "$plan_dir/tasks.md"
-
-        if [ -n "$table_error" ]; then
-            add_error "$table_error"
-        elif ! grep -q "^|" "$plan_dir/tasks.md"; then
-            add_error "tasks.md has no table rows"
-        else
-            # Check for at least one data row (header + separator + data = 3 rows minimum)
-            local row_count=$(grep "^|" "$plan_dir/tasks.md" | wc -l)
-            if [ "$row_count" -lt 3 ]; then
-                add_error "tasks.md has no task rows (header-only table)"
-            fi
-        fi
-    fi
-
-    # Rule 8: state.json validation (if exists)
-    if [ -f "$plan_dir/state.json" ]; then
-        # Validate JSON syntax
-        if ! jq empty "$plan_dir/state.json" 2>/dev/null; then
-            echo "Warning: state.json contains invalid JSON" >&2
-        else
-            # Validate required fields exist (null is a valid value for next_phase, current_task, phase_iteration)
-            local missing_fields=""
-            jq -r 'has("phase")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}phase "
-            jq -r 'has("next_phase")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}next_phase "
-            jq -r 'has("review_model")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}review_model "
-            jq -r 'has("max_reviews")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}max_reviews "
-            jq -r 'has("consecutive_clean")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}consecutive_clean "
-            jq -r 'has("tdd")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}tdd "
-            jq -r 'has("current_task")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}current_task "
-            jq -r 'has("phase_iteration")' "$plan_dir/state.json" 2>/dev/null | grep -q "true" || missing_fields="${missing_fields}phase_iteration "
-
-            if [ -n "$missing_fields" ]; then
-                echo "Warning: state.json missing required fields: ${missing_fields}" >&2
-            fi
-        fi
-    fi
-
-    # Rule 9: Check for invalid files (only .md and state.json allowed)
-    for file in "$plan_dir"/*; do
-        [ -e "$file" ] || continue
-        [ -d "$file" ] && continue  # Skip directories
-        local filename=$(basename "$file")
-
-        # Allowed files: *.md, state.json
-        if [[ ! "$filename" =~ \.md$ ]] && [ "$filename" != "state.json" ]; then
-            add_error "Invalid file in plan directory: $filename (only .md files and state.json allowed)"
-        fi
-    done
-
-    if [ -n "$errors" ]; then
-        echo "$errors"
-        return 1
-    fi
-    return 0
-}
-
-# Validate only the most recently modified plan
-PLAN_NAME=$(basename "$RECENT_PLAN")
-log "Running validation on $RECENT_PLAN"
-set +e
-# Capture only stdout (errors), let stderr (warnings) pass through
-PLAN_ERROR=$(validate_plan_structure "$RECENT_PLAN")
-PLAN_RESULT=$?
-set -e
-
-if [ $PLAN_RESULT -eq 0 ]; then
-    log "Validation PASS"
-    log "Final exit: code=0 decision=approve"
-    echo '{"suppressOutput": true}'
-else
-    log "Validation FAIL: $PLAN_ERROR"
-    log "Final exit: code=2 (continue conversation)"
-    echo "Stop hook error: Plan '$PLAN_NAME': $PLAN_ERROR" >&2
-    exit 2
-fi
+# Validation already passed (checked at top before review logic)
+# Approve non-review phases
+log "Final exit: code=0 decision=approve (non-review phase, validation passed)"
+echo '{"suppressOutput": true}'
 exit 0

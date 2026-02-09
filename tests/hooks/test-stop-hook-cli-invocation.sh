@@ -132,11 +132,13 @@ cleanup
 TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-tasks-review", "next_phase": "tasks-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
-# tasks.md exists but no task files
+# tasks.md exists with task rows but no actual task files
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
 |----|--------|
+| 1  | done   |
 EOF
+# Don't create task-1.md file, so TASK_FILE_LIST is empty
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 

@@ -224,10 +224,13 @@ cleanup
 # Test 12: all-code-review with no task files skips review
 TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+# Create tasks.md with task rows but no actual task files
 cat > "$TEST_DIR/.taskie/plans/test-plan/tasks.md" << 'EOF'
 | Id | Status |
 |----|--------|
+| 1  | done   |
 EOF
+# Don't create task-1.md file, so all-code-review has no files to review
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "post-all-code-review", "next_phase": "all-code-review", "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": null, "phase_iteration": 0}'
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
