@@ -74,8 +74,8 @@ TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
 create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
-    pass "Valid plan structure correctly validated (exit 0 with success message)"
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
+    pass "Valid plan structure correctly validated (exit 0 with suppressOutput)"
 else
     fail "Valid plan structure not handled correctly (exit $HOOK_EXIT_CODE)"
 fi
@@ -89,8 +89,8 @@ This file has an invalid name.
 EOF
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q '"decision": "block"' && echo "$HOOK_STDOUT" | grep -q "Missing required file: plan.md"; then
-    pass "Invalid plan structure correctly blocked (missing plan.md + invalid filename)"
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Missing required file: plan.md"; then
+    pass "Invalid plan structure correctly blocked (exit 2 with error)"
 else
     fail "Invalid plan structure not handled correctly (exit $HOOK_EXIT_CODE)"
 fi
@@ -107,8 +107,8 @@ cat > "$TEST_DIR/.taskie/plans/test-plan/nested/extra.md" << 'EOF'
 EOF
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q '"decision": "block"' && echo "$HOOK_STDOUT" | grep -q "nested directories"; then
-    pass "Nested directories correctly blocked"
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "nested directories"; then
+    pass "Nested directories correctly blocked (exit 2)"
 else
     fail "Nested directories not handled correctly (exit $HOOK_EXIT_CODE)"
 fi
@@ -125,8 +125,8 @@ cat > "$TEST_DIR/.taskie/plans/test-plan/design-review-1.md" << 'EOF'
 EOF
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q '"decision": "block"' && echo "$HOOK_STDOUT" | grep -q "design-review-1.md requires design.md"; then
-    pass "Review without base file correctly blocked"
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "design-review-1.md requires design.md"; then
+    pass "Review without base file correctly blocked (exit 2)"
 else
     fail "Review without base file not handled correctly (exit $HOOK_EXIT_CODE)"
 fi
@@ -143,8 +143,8 @@ cat > "$TEST_DIR/.taskie/plans/test-plan/plan-post-review-1.md" << 'EOF'
 EOF
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q '"decision": "block"' && echo "$HOOK_STDOUT" | grep -q "plan-post-review-1.md requires plan-review-1.md"; then
-    pass "Post-review without review correctly blocked"
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "plan-post-review-1.md requires plan-review-1.md"; then
+    pass "Post-review without review correctly blocked (exit 2)"
 else
     fail "Post-review without review not handled correctly (exit $HOOK_EXIT_CODE)"
 fi
@@ -162,8 +162,8 @@ Do something.
 EOF
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q '"decision": "block"' && echo "$HOOK_STDOUT" | grep -q "Task files exist but tasks.md is missing"; then
-    pass "Task files without tasks.md correctly blocked"
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Task files exist but tasks.md is missing"; then
+    pass "Task files without tasks.md correctly blocked (exit 2)"
 else
     fail "Task files without tasks.md not handled correctly (exit $HOOK_EXIT_CODE)"
 fi
@@ -181,8 +181,8 @@ This is not a table, it's prose.
 EOF
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q '"decision": "block"' && echo "$HOOK_STDOUT" | grep -q "non-table content"; then
-    pass "Non-table tasks.md correctly blocked"
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "non-table content"; then
+    pass "Non-table tasks.md correctly blocked (exit 2)"
 else
     fail "Non-table tasks.md not handled correctly (exit $HOOK_EXIT_CODE)"
 fi
@@ -197,8 +197,8 @@ EOF
 touch "$TEST_DIR/.taskie/plans/test-plan/tasks.md"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q '"decision": "block"' && echo "$HOOK_STDOUT" | grep -q "no table rows"; then
-    pass "Empty tasks.md correctly blocked"
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "no table rows"; then
+    pass "Empty tasks.md correctly blocked (exit 2)"
 else
     fail "Empty tasks.md not handled correctly (exit $HOOK_EXIT_CODE)"
 fi
@@ -210,7 +210,7 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false}'
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "state.json not rejected by filename validation"
 else
     fail "state.json incorrectly blocked (exit $HOOK_EXIT_CODE)"
@@ -223,7 +223,7 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 echo "{ invalid json }" > "$TEST_DIR/.taskie/plans/test-plan/state.json"
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDERR" | grep -q "invalid JSON" && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDERR" | grep -q "invalid JSON" && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "Invalid JSON in state.json logs warning but doesn't block"
 else
     fail "Invalid JSON in state.json handled incorrectly (exit $HOOK_EXIT_CODE)"
@@ -236,7 +236,7 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"max_reviews": 8}'
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDERR" | grep -q "missing required fields" && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDERR" | grep -q "missing required fields" && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "Missing required fields in state.json logs warning but doesn't block"
 else
     fail "Missing fields in state.json handled incorrectly (exit $HOOK_EXIT_CODE)"
@@ -249,7 +249,7 @@ create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
 create_state_json "$TEST_DIR/.taskie/plans/test-plan" '{"phase": "implementation", "next_phase": null, "review_model": "opus", "max_reviews": 8, "consecutive_clean": 0, "tdd": false, "current_task": 1, "phase_iteration": null}'
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
-if [ $HOOK_EXIT_CODE -eq 0 ] && ! echo "$HOOK_STDERR" | grep -q "Warning" && echo "$HOOK_STDOUT" | grep -q "validated successfully"; then
+if [ $HOOK_EXIT_CODE -eq 0 ] && ! echo "$HOOK_STDERR" | grep -q "Warning" && echo "$HOOK_STDOUT" | jq -e '.suppressOutput == true' >/dev/null 2>&1; then
     pass "Valid state.json produces no warnings"
 else
     fail "Valid state.json incorrectly warned (exit $HOOK_EXIT_CODE)"

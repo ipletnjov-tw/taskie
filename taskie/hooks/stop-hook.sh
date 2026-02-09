@@ -143,11 +143,17 @@ if [ -f "$STATE_FILE" ]; then
         # AUTOMATIC STATE TRANSITION DETECTION
         # Detect if agent just completed a post-review action and auto-update state
         log "Detecting agent completion (phase=$PHASE, next_phase=$NEXT_PHASE)"
-        if [[ "$PHASE" =~ ^(plan-review|tasks-review|code-review|all-code-review)$ ]] && \
-           [[ "$NEXT_PHASE" =~ ^(post-plan-review|post-tasks-review|post-code-review|post-all-code-review)$ ]]; then
-            # Extract base review type (plan-review, tasks-review, etc)
+        PHASE_MATCH=false
+        NEXT_PHASE_MATCH=false
+        [[ "$PHASE" =~ ^(plan-review|tasks-review|code-review|all-code-review)$ ]] && PHASE_MATCH=true
+        [[ "$NEXT_PHASE" =~ ^(post-plan-review|post-tasks-review|post-code-review|post-all-code-review)$ ]] && NEXT_PHASE_MATCH=true
+        log "Auto-transition check: PHASE_MATCH=$PHASE_MATCH, NEXT_PHASE_MATCH=$NEXT_PHASE_MATCH"
+        if [ "$PHASE_MATCH" = "true" ] && [ "$NEXT_PHASE_MATCH" = "true" ]; then
+            # Extract base review type (plan, tasks, code, all-code)
             REVIEW_BASE="${PHASE}"
-            POST_REVIEW_FILE="$RECENT_PLAN/${NEXT_PHASE}-${PHASE_ITERATION}.md"
+            # Convert review phase to post-review filename: plan-review → plan-post-review
+            BASE_NAME="${PHASE%-review}"  # Remove -review suffix
+            POST_REVIEW_FILE="$RECENT_PLAN/${BASE_NAME}-post-review-${PHASE_ITERATION}.md"
             log "Checking for post-review completion: $POST_REVIEW_FILE"
 
             if [ -f "$POST_REVIEW_FILE" ]; then
