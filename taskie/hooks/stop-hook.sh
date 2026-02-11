@@ -48,28 +48,28 @@ validate_plan_structure() {
         md_count=$((md_count + 1))
         log "    Checking: $filename"
 
-        # Valid patterns:
+        # Valid patterns (task IDs are numeric only to prevent greedy matching):
         # - plan.md, design.md, tasks.md
-        # - task-{id}.md
+        # - task-{N}.md
         # - plan-review-{n}.md, design-review-{n}.md, tasks-review-{n}.md
         # - all-code-review-{n}.md
-        # - task-{id}-review-{n}.md
-        # - task-{id}-code-review-{n}.md (task-specific code reviews)
+        # - task-{N}-review-{n}.md
+        # - task-{N}-code-review-{n}.md (task-specific code reviews)
         # - plan-post-review-{n}.md, design-post-review-{n}.md, tasks-post-review-{n}.md
         # - all-code-post-review-{n}.md
-        # - task-{id}-post-review-{n}.md
-        # - task-{id}-code-post-review-{n}.md (task-specific code post-reviews)
+        # - task-{N}-post-review-{n}.md
+        # - task-{N}-code-post-review-{n}.md (task-specific code post-reviews)
 
         if [[ ! "$filename" =~ ^(plan|design|tasks)\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^(plan|design|tasks)-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^all-code-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-code-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[0-9]+-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[0-9]+-code-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^(plan|design|tasks)-post-review-[0-9]+\.md$ ]] && \
            [[ ! "$filename" =~ ^all-code-post-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-post-review-[0-9]+\.md$ ]] && \
-           [[ ! "$filename" =~ ^task-[a-zA-Z0-9_-]+-code-post-review-[0-9]+\.md$ ]]; then
+           [[ ! "$filename" =~ ^task-[0-9]+-post-review-[0-9]+\.md$ ]] && \
+           [[ ! "$filename" =~ ^task-[0-9]+-code-post-review-[0-9]+\.md$ ]]; then
             add_error "Invalid filename: $filename"
         else
             log "      ✓ Valid pattern"
@@ -363,7 +363,7 @@ log ".taskie/plans found"
 mkdir -p .taskie/logs
 HOOK_LOG=".taskie/logs/hook-$(date '+%Y-%m-%dT%H-%M-%S').log"
 log "=== Hook invocation ==="
-log "TASKIE PLUGIN VERSION: 4.0.1"
+log "TASKIE PLUGIN VERSION: 4.1.0"
 log "EVENT: $EVENT"
 log "CWD: $CWD"
 log "stop_hook_active: $STOP_HOOK_ACTIVE"
@@ -891,12 +891,17 @@ if [ -f "$STATE_FILE" ]; then
                     echo "Stop hook error: $BLOCK_REASON" >&2
                     exit 2
                 else
-                    # CLI failed or review file missing
+                    # CLI failed or review file missing - BLOCK so user can investigate
                     log "CLI failed or review not written: exit=$CLI_EXIT, review_exists=$([ -f "$REVIEW_FILE" ] && echo true || echo false)"
-                    echo "Warning: Review failed (exit $CLI_EXIT) or review file not written" >&2
-                    echo '{"systemMessage": "Review failed, proceeding without review", "suppressOutput": true}'
-                    log "Final exit: code=0 decision=approve (review failed)"
-                    exit 0
+                    if [ $CLI_EXIT -eq 124 ]; then
+                        FAIL_REASON="CLI timed out after 28 minutes (exit 124). Check .taskie/logs/ for details. Escape hatch: update state.json to set next_phase manually."
+                    else
+                        FAIL_REASON="CLI failed (exit $CLI_EXIT) or review file not written. Check .taskie/logs/ for details. Escape hatch: update state.json to set next_phase manually."
+                    fi
+                    log "DECISION: block (CLI failure)"
+                    log "Final exit: code=2 decision=block (review failed)"
+                    echo "Stop hook error: $FAIL_REASON" >&2
+                    exit 2
                 fi
             else
                 log "claude CLI NOT FOUND: skipping review"

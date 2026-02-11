@@ -619,4 +619,112 @@ else
 fi
 rm -rf "$TEST_DIR"
 
+# Test 41: Garbage "post-post-post" filenames correctly blocked
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-2.md"
+echo "# Garbage" > "$TEST_DIR/.taskie/plans/test-plan/task-2-code-post-post-post-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename: task-2-code-post-post-post-review-1.md"; then
+    pass "Garbage post-post-post filename correctly blocked (exit 2)"
+else
+    fail "Garbage post-post-post filename not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 42: Non-numeric task ID correctly blocked
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Garbage" > "$TEST_DIR/.taskie/plans/test-plan/task-abc-code-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename: task-abc-code-review-1.md"; then
+    pass "Non-numeric task ID correctly blocked (exit 2)"
+else
+    fail "Non-numeric task ID not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 43: code-review-1-response.md garbage pattern correctly blocked
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Garbage" > "$TEST_DIR/.taskie/plans/test-plan/code-review-1-response.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename: code-review-1-response.md"; then
+    pass "code-review-1-response.md garbage correctly blocked (exit 2)"
+else
+    fail "code-review-1-response.md not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 44: task-2-code-post-post-review-1.md (double post) correctly blocked
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-2.md"
+echo "# Garbage" > "$TEST_DIR/.taskie/plans/test-plan/task-2-code-post-post-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename: task-2-code-post-post-review-1.md"; then
+    pass "Double post pattern correctly blocked (exit 2)"
+else
+    fail "Double post pattern not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 45: Hidden files (.review-1.log) correctly blocked
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "log content" > "$TEST_DIR/.taskie/plans/test-plan/.review-1.log"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid file in plan directory: .review-1.log"; then
+    pass "Hidden file .review-1.log correctly blocked (exit 2)"
+else
+    fail "Hidden file .review-1.log not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 46: task-abc.md (non-numeric task ID in task file) correctly blocked
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Task ABC" > "$TEST_DIR/.taskie/plans/test-plan/task-abc.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename: task-abc.md"; then
+    pass "Non-numeric task ID in task file correctly blocked (exit 2)"
+else
+    fail "Non-numeric task ID in task file not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 47: Valid task-10.md and task-10-code-review-1.md accepted
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+echo "# Task 10" > "$TEST_DIR/.taskie/plans/test-plan/task-10.md"
+echo "# Code Review" > "$TEST_DIR/.taskie/plans/test-plan/task-10-code-review-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 0 ]; then
+    pass "Multi-digit task ID (task-10) accepted (exit 0)"
+else
+    fail "Multi-digit task ID rejected (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
+# Test 48: task-1-code-review-response-1.md garbage correctly blocked
+TEST_DIR=$(mktemp -d /tmp/taskie-test.XXXXXX)
+create_test_plan "$TEST_DIR/.taskie/plans/test-plan"
+touch "$TEST_DIR/.taskie/plans/test-plan/task-1.md"
+echo "# Garbage" > "$TEST_DIR/.taskie/plans/test-plan/task-1-code-review-response-1.md"
+
+run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "Invalid filename"; then
+    pass "task-1-code-review-response-1.md garbage correctly blocked (exit 2)"
+else
+    fail "task-1-code-review-response-1.md not caught (exit $HOOK_EXIT_CODE, stderr: $HOOK_STDERR)"
+fi
+rm -rf "$TEST_DIR"
+
 print_results

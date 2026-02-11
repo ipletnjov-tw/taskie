@@ -1,7 +1,7 @@
 {
   "name": "taskie",
   "description": "A simple framework of reusable prompts that makes it easy to implement features & projects of almost any level of complexity while maintaining a high level of code quality.",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "author": {
     "name": "Igor Pletnjov",
     "url": "https://github.com/ipletnjov-tw"

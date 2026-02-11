@@ -178,10 +178,10 @@ export MOCK_CLAUDE_EXIT_CODE=1  # Simulate CLI failure
 
 run_hook "{\"cwd\": \"$TEST_DIR\", \"stop_hook_active\": false}" || true
 
-if [ $HOOK_EXIT_CODE -eq 0 ] && echo "$HOOK_STDOUT" | grep -q "Review failed"; then
-    pass "CLI failure handled gracefully with warning"
+if [ $HOOK_EXIT_CODE -eq 2 ] && echo "$HOOK_STDERR" | grep -q "CLI failed"; then
+    pass "CLI failure blocks with exit 2"
 else
-    fail "CLI failure not handled correctly"
+    fail "CLI failure not handled correctly (exit=$HOOK_EXIT_CODE)"
 fi
 cleanup
 
