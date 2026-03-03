@@ -24,7 +24,7 @@ Heavily inspired by [Taskmaster](https://github.com/eyaltoledano/claude-task-mas
 /plugin install taskie@taskie
 ```
 
-Latest version: **v2.2.2**
+Latest version: **v2.3.0**
 
 ### For OpenAI Codex CLI
 
@@ -38,8 +38,8 @@ This copies all prompts to `~/.codex/prompts/` with `taskie-` prefix. Restart Co
 
 #### Codex CLI Technical Details
 
-The Codex installation includes 18 files:
-- **17 user-invocable prompts** (`taskie-new-plan.md`, `taskie-continue-plan.md`, etc.)
+The Codex installation includes 19 files:
+- **18 user-invocable prompts** (`taskie-new-plan.md`, `taskie-continue-plan.md`, etc.)
 - **1 shared ground rules file** (`taskie-ground-rules.md`)
 
 All prompts reference `~/.codex/prompts/taskie-ground-rules.md` to load shared ground rules at runtime. This design:
@@ -76,6 +76,7 @@ All prompts reference `~/.codex/prompts/taskie-ground-rules.md` to load shared g
 
 ### Code Review Commands
 - `code-review` - Critically review implemented code
+- `code-review-conventions` - Code review focused on project conventions and patterns
 - `post-code-review` - Apply code review feedback
 - `all-code-review` - Review ALL code across ALL tasks in the plan
 - `post-all-code-review` - Apply complete implementation review feedback
@@ -160,7 +161,7 @@ The LLM will start implementing the first task and all of its subtasks. It will 
 /taskie:code-review
 ```
 
-The LLM will very critically scrutinize its own implementation. You will then want to `/taskie:post-code-review` to apply the review comments to the implementation.
+The LLM will very critically scrutinize its own implementation. You can also use `/taskie:code-review-conventions` to focus the review specifically on whether the code follows existing project conventions, patterns, and architecture. You will then want to `/taskie:post-code-review` to apply the review comments to the implementation.
 
 **Refine each task as much as possible using the review & post-review cycle until you achieve your desired level of completion and quality.** 🔁
 
